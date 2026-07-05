@@ -228,6 +228,7 @@ async function loadFavs() {
             txt.textContent = r.content;
             let locEl = null;
             const locParts = [];
+            if (r.qr_type === 'location') locParts.push('🚩 位置');
             if (r.location) locParts.push('📍 ' + r.location);
             if (r.stack_base > 0 && r.stack_height > 0) {
                 locParts.push(`🧱 ${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}`);

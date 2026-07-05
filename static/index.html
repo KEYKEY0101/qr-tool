@@ -142,6 +142,38 @@ nav a:hover { color: var(--primary); }
 .stack-row input:focus { outline: none; border-color: var(--primary); }
 .stack-row .x { color: var(--text-dim); font-weight: bold; }
 .stack-row .calc { color: var(--primary); font-weight: bold; font-size: 1.05rem; }
+.type-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-dim);
+    user-select: none;
+    white-space: nowrap;
+    margin-left: auto;
+    font-size: .92rem;
+}
+.type-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: #f59e0b;
+    cursor: pointer;
+}
+.type-check:has(input:checked) {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+#qrTypeView {
+    display: none;
+    color: #f59e0b;
+    font-weight: bold;
+    font-size: .92rem;
+    margin: -2px 0 8px;
+}
 .loc-edit-row {
     display: flex;
     gap: 8px;
@@ -390,12 +422,16 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <span class="x">×</span>
             <input id="heightInput" type="number" min="0" step="1" placeholder="高">
             <span id="stackCalc" class="calc"></span>
+            <label class="type-check" title="打勾代表這是位置二維碼，不勾是貨物">
+                <input type="checkbox" id="typeLoc"><span>🚩 位置二維碼</span>
+            </label>
         </div>
     </div>
 
     <div class="card" id="qrResult">
         <img id="qrImg" alt="QR Code">
         <div id="qrContent"></div>
+        <div id="qrTypeView"></div>
         <div id="qrMeta"></div>
         <div id="qrLocView"></div>
         <div id="qrStackView"></div>
@@ -411,6 +447,9 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <input id="locEditInput" type="text" placeholder="位置（留空清除）" autocomplete="off">
             <input id="baseEditInput" type="number" min="0" step="1" placeholder="底" class="stack-edit">
             <input id="heightEditInput" type="number" min="0" step="1" placeholder="高" class="stack-edit">
+            <label class="type-check" style="margin-left:0;padding:6px 10px;font-size:.85rem">
+                <input type="checkbox" id="typeEditCheck"><span>🚩 位置</span>
+            </label>
             <button class="btn-sm" onclick="saveLoc()">儲存</button>
         </div>
         <div id="resultPhotos"></div>
@@ -484,7 +523,8 @@ async function generate() {
                 text,
                 location: $('locInput').value.trim().toUpperCase(),
                 base: parseInt($('baseInput').value) || 0,
-                height: parseInt($('heightInput').value) || 0
+                height: parseInt($('heightInput').value) || 0,
+                qr_type: $('typeLoc').checked ? 'location' : 'goods'
             })
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
@@ -495,6 +535,7 @@ async function generate() {
         $('locInput').value = '';  // 避免殘留寫到下一個二維碼
         $('baseInput').value = '';
         $('heightInput').value = '';
+        $('typeLoc').checked = false;
         updateStackCalc();
         $('qrInput').select();
         loadRecords();
@@ -510,6 +551,9 @@ function showResult(record, qrSrc) {
     $('qrResult').style.display = 'block';
     $('qrImg').src = qrSrc;
     $('qrContent').textContent = record.content;
+    const isLocType = record.qr_type === 'location';
+    $('qrTypeView').textContent = isLocType ? '🚩 位置二維碼' : '';
+    $('qrTypeView').style.display = isLocType ? 'block' : 'none';
     $('qrMeta').textContent = (record.times ? `第 ${record.times} 次產生` : '') +
         (record.created_at ? `　${record.created_at}` : '');
     $('qrLocView').textContent = record.location ? '📍 ' + record.location : '';
@@ -643,6 +687,7 @@ function toggleLocEdit() {
         $('locEditInput').value = currentRecord.location || '';
         $('baseEditInput').value = currentRecord.stack_base > 0 ? currentRecord.stack_base : '';
         $('heightEditInput').value = currentRecord.stack_height > 0 ? currentRecord.stack_height : '';
+        $('typeEditCheck').checked = currentRecord.qr_type === 'location';
         $('locEditInput').focus();
     } else {
         row.style.display = 'none';
@@ -655,17 +700,19 @@ async function saveLoc() {
     const location = $('locEditInput').value.trim().toUpperCase();
     const base = parseInt($('baseEditInput').value) || 0;
     const height = parseInt($('heightEditInput').value) || 0;
+    const qr_type = $('typeEditCheck').checked ? 'location' : 'goods';
     try {
         const res = await fetch(`/api/records/${rec.id}/location`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({location, base, height})
+            body: JSON.stringify({location, base, height, qr_type})
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         const data = await res.json();
         rec.location = data.location;
         rec.stack_base = data.base;
         rec.stack_height = data.height;
+        rec.qr_type = data.qr_type;
         if (rec === currentRecord) {
             $('qrLocView').textContent = rec.location ? '📍 ' + rec.location : '';
             $('qrLocView').style.display = rec.location ? 'block' : 'none';
@@ -674,6 +721,9 @@ async function saveLoc() {
                 ? `🧱 ${rec.stack_base}底 × ${rec.stack_height}高 = ${rec.stack_base * rec.stack_height}／板`
                 : '';
             $('qrStackView').style.display = hasStack ? 'block' : 'none';
+            const isLocType = rec.qr_type === 'location';
+            $('qrTypeView').textContent = isLocType ? '🚩 位置二維碼' : '';
+            $('qrTypeView').style.display = isLocType ? 'block' : 'none';
             $('locEditRow').style.display = 'none';
         }
         showToast('已儲存');
@@ -772,10 +822,12 @@ function renderRecords() {
             <td><button class="del-btn" title="刪除">✕</button></td>`;
         tr.querySelector('.content-cell').textContent = r.content;
         const hasStack = r.stack_base > 0 && r.stack_height > 0;
-        if (r.is_favorite || (r.images && r.images.length) || r.location || hasStack) {
+        const isLocType = r.qr_type === 'location';
+        if (r.is_favorite || (r.images && r.images.length) || r.location || hasStack || isLocType) {
             const meta = document.createElement('span');
             meta.className = 'row-meta';
-            meta.textContent = (r.is_favorite ? ' ⭐' : '') +
+            meta.textContent = (isLocType ? ' 🚩位置' : '') +
+                (r.is_favorite ? ' ⭐' : '') +
                 (r.images && r.images.length ? ' 📷' + r.images.length : '') +
                 (r.location ? ' 📍' + r.location : '') +
                 (hasStack ? ` 🧱${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}` : '');

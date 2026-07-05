@@ -192,6 +192,16 @@ def init_db():
                 )
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS return_day_images (
+                    id SERIAL PRIMARY KEY,
+                    day DATE NOT NULL,
+                    filename TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         conn.close()
         DB_ERROR = None
     except Exception as e:
@@ -811,6 +821,65 @@ def create_return(
     }
 
 
+@app.post("/api/returns/dayimages")
+def add_day_images(date: str = Form(""), files: list[UploadFile] = File(...)):
+    """上傳「當日貨物相片」（附屬於日期，不屬於單筆記錄）"""
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    day = date.strip() or time.strftime("%Y-%m-%d")
+    try:
+        time.strptime(day, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "日期格式錯誤")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"d{day.replace('-', '')}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO return_day_images (day, filename) VALUES (%s, %s)",
+                    (day, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/dayimages/{img_id}")
+def delete_day_image(img_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM return_day_images WHERE id = %s RETURNING filename",
+            (img_id,),
+        )
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "找不到相片")
+    try:
+        (UPLOAD_DIR / row[0]).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除相片檔案失敗 {row[0]}: {e}")
+    return {"ok": True}
+
+
 @app.get("/api/returns/days")
 def list_return_days():
     """日期總覽：每天的筆數與三種單位合計"""
@@ -894,11 +963,18 @@ def list_returns(date: str = ""):
             (day,),
         )
         units = [{"unit": u, "qty": float(q)} for u, q in cur.fetchall()]
+        cur.execute(
+            "SELECT id, filename FROM return_day_images "
+            "WHERE day = %s::date ORDER BY id",
+            (day,),
+        )
+        day_images = [{"id": r[0], "filename": r[1]} for r in cur.fetchall()]
     conn.close()
     return {
         "db_ok": True,
         "date": day,
         "totals": {"CTN": float(t_ctn), "KG": float(t_kg), "units": units},
+        "day_images": day_images,
         "records": [
             {
                 "id": r[0],

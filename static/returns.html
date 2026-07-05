@@ -256,6 +256,25 @@ nav a:hover { color: var(--primary); }
 #dayEmpty { text-align: center; color: var(--text-dim); padding: 24px 10px; }
 .day-page-bar { display: flex; align-items: center; gap: 12px; }
 .day-page-title { font-weight: bold; font-size: 1.05rem; }
+.day-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.day-photo-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.dp-item { position: relative; }
+.dp-item img {
+    width: 110px; height: 110px; object-fit: cover;
+    border-radius: 10px; border: 1px solid var(--border); cursor: pointer;
+}
+.dp-item .dp-rm {
+    position: absolute; top: -7px; right: -7px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: .72rem;
+    width: 22px; height: 22px;
+    line-height: 1;
+}
+#dayPhotoEmpty { color: var(--text-dim); font-size: .88rem; text-align: center; padding: 14px 6px; }
 
 /* 詳細頁 */
 .detail-overlay {
@@ -389,6 +408,16 @@ nav a:hover { color: var(--primary); }
             <div class="total-box"><div class="num" id="tMID">0</div><div class="lbl">件數（可自訂單位）</div></div>
             <div class="total-box"><div class="num" id="tKG">0</div><div class="lbl">KG 公斤</div></div>
         </div>
+    </div>
+
+    <div class="card">
+        <div class="day-photo-head">
+            <h2 style="margin-bottom:0">📷 當日貨物相片</h2>
+            <button class="photo-btn" onclick="$('dayFiles').click()">📷 上傳相片</button>
+            <input id="dayFiles" type="file" accept="image/*" multiple style="display:none">
+        </div>
+        <div class="day-photo-grid" id="dayPhotos"></div>
+        <div id="dayPhotoEmpty">尚無相片 — 把當天全部貨物拍一張上傳，之後回來看就一目了然</div>
     </div>
 
     <div class="card">
@@ -596,6 +625,7 @@ async function loadRecords() {
             return;
         }
         currentRecords = data.records;
+        renderDayPhotos(data.day_images || []);
         $('tCTN').textContent = fmtNum(data.totals.CTN || 0);
         const units = data.totals.units || [];
         $('tMID').textContent = units.length
@@ -614,6 +644,58 @@ function esc(s) {
     return String(s).replace(/[&<>"']/g, c =>
         ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 }
+// ---------- 當日貨物相片 ----------
+function renderDayPhotos(imgs) {
+    const grid = $('dayPhotos');
+    grid.innerHTML = '';
+    $('dayPhotoEmpty').style.display = imgs.length ? 'none' : 'block';
+    for (const im of imgs) {
+        const item = document.createElement('div');
+        item.className = 'dp-item';
+        const img = document.createElement('img');
+        img.src = '/uploads/' + im.filename;
+        img.loading = 'lazy';
+        img.onclick = () => showImage('/uploads/' + im.filename, $('datePick').value + ' 貨物相片');
+        const rm = document.createElement('button');
+        rm.className = 'dp-rm';
+        rm.textContent = '✕';
+        rm.title = '刪除相片';
+        rm.onclick = () => delDayPhoto(im);
+        item.appendChild(img);
+        item.appendChild(rm);
+        grid.appendChild(item);
+    }
+}
+
+$('dayFiles').addEventListener('change', async e => {
+    if (!e.target.files.length) return;
+    const fd = new FormData();
+    fd.append('date', $('datePick').value);
+    for (const f of e.target.files) fd.append('files', f);
+    e.target.value = '';
+    showToast('相片上傳中…');
+    try {
+        const res = await fetch('/api/returns/dayimages', {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已上傳當日貨物相片');
+        loadRecords();
+    } catch (err) {
+        showToast('上傳失敗：' + err.message);
+    }
+});
+
+async function delDayPhoto(im) {
+    if (!confirm('確定刪除這張相片？')) return;
+    try {
+        const res = await fetch(`/api/dayimages/${im.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除相片');
+        loadRecords();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
 function qtyBadges(r) {
     const parts = [];
     if (r.ctn > 0) parts.push(fmtNum(r.ctn) + ' CTN');

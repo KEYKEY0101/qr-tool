@@ -1100,6 +1100,64 @@ def update_return(record_id: int, body: ReturnUpdate):
     return {"ok": True}
 
 
+@app.post("/api/returns/{record_id}/images")
+def add_return_images(record_id: int, files: list[UploadFile] = File(...)):
+    """為既有退貨記錄補加照片（交易式：失敗整批回滾並清檔）"""
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM return_records WHERE id = %s", (record_id,))
+            if not cur.fetchone():
+                raise HTTPException(404, "找不到記錄")
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"r{record_id}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO return_images (record_id, filename) "
+                    "VALUES (%s, %s)",
+                    (record_id, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/retimg")
+def delete_return_image(record_id: int, filename: str):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM return_images WHERE record_id = %s AND filename = %s",
+            (record_id, filename),
+        )
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到照片")
+    try:
+        (UPLOAD_DIR / filename).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除照片檔案失敗 {filename}: {e}")
+    return {"ok": True}
+
+
 @app.get("/api/returns/{record_id}/qr")
 def return_record_qr(record_id: int):
     """記錄的二維碼（由退貨內容自動生成）"""

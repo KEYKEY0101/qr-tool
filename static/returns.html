@@ -362,7 +362,8 @@ nav a:hover { color: var(--primary); }
 .detail-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .detail-sec { margin-top: 18px; }
 .detail-sec h3 { font-size: .95rem; margin-bottom: 10px; color: var(--text-dim); }
-.detail-photos { display: flex; gap: 8px; flex-wrap: wrap; }
+.d-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.detail-photos { display: flex; gap: 10px; flex-wrap: wrap; }
 .detail-photos img {
     width: 84px; height: 84px; object-fit: cover;
     border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
@@ -534,7 +535,11 @@ nav a:hover { color: var(--primary); }
             <button class="btn" id="saveBtn" onclick="saveEdit()">💾 儲存修改</button>
         </div>
         <div class="detail-sec" id="dPhotoSec">
-            <h3>📷 照片</h3>
+            <div class="d-photo-head">
+                <h3 style="margin-bottom:0">📷 照片</h3>
+                <button class="photo-btn" onclick="$('dPhotoFiles').click()">📷 加入照片</button>
+                <input id="dPhotoFiles" type="file" accept="image/*" multiple style="display:none">
+            </div>
             <div class="detail-photos" id="dPhotos"></div>
         </div>
     </div>
@@ -850,13 +855,55 @@ function renderDetail() {
     $('eLoc').value = r.location || '';
     const ph = $('dPhotos');
     ph.innerHTML = '';
-    $('dPhotoSec').style.display = r.images.length ? '' : 'none';
     for (const rel of r.images) {
+        const item = document.createElement('div');
+        item.className = 'dp-item';
         const img = document.createElement('img');
         img.src = '/uploads/' + rel;
         img.loading = 'lazy';
+        img.style.width = '84px';
+        img.style.height = '84px';
         img.onclick = () => showImage('/uploads/' + rel, r.content);
-        ph.appendChild(img);
+        const rm = document.createElement('button');
+        rm.className = 'dp-rm';
+        rm.textContent = '✕';
+        rm.title = '刪除照片';
+        rm.onclick = () => delRetPhoto(r, rel);
+        item.appendChild(img);
+        item.appendChild(rm);
+        ph.appendChild(item);
+    }
+}
+
+$('dPhotoFiles').addEventListener('change', async e => {
+    if (detailId === null || !e.target.files.length) return;
+    const id = detailId;  // 鎖定當下的記錄
+    const fd = new FormData();
+    for (const f of e.target.files) fd.append('files', f);
+    e.target.value = '';
+    showToast('照片上傳中…');
+    try {
+        const res = await fetch(`/api/returns/${id}/images`, {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已加入照片');
+        await loadRecords();
+    } catch (err) {
+        showToast('上傳失敗：' + err.message);
+    }
+});
+
+async function delRetPhoto(r, rel) {
+    if (!confirm('確定刪除這張照片？')) return;
+    try {
+        const res = await fetch(
+            `/api/retimg?record_id=${r.id}&filename=${encodeURIComponent(rel)}`,
+            {method: 'DELETE'}
+        );
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除照片');
+        await loadRecords();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
     }
 }
 

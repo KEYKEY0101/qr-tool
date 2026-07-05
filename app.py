@@ -145,6 +145,8 @@ def init_db():
                     qty_pcs NUMERIC(12,2) NOT NULL DEFAULT 0,
                     pcs_unit TEXT NOT NULL DEFAULT 'PCS',
                     qty_kg NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    has_rt BOOLEAN NOT NULL DEFAULT FALSE,
+                    location TEXT NOT NULL DEFAULT '',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
                 """
@@ -163,6 +165,12 @@ def init_db():
                 cur.execute(
                     "ALTER TABLE return_records "
                     "ADD COLUMN pcs_unit TEXT NOT NULL DEFAULT 'PCS'"
+                )
+            if cols and "has_rt" not in cols:  # RT 勾選 + 回倉位置
+                cur.execute(
+                    "ALTER TABLE return_records "
+                    "ADD COLUMN has_rt BOOLEAN NOT NULL DEFAULT FALSE, "
+                    "ADD COLUMN location TEXT NOT NULL DEFAULT ''"
                 )
             if "qty_ctn" not in cols:
                 cur.execute(
@@ -763,6 +771,8 @@ def create_return(
     pcs: str = Form("0"),
     kg: str = Form("0"),
     pcs_unit: str = Form("PCS"),
+    rt: str = Form("false"),
+    location: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
     if DB_ERROR is not None:
@@ -774,6 +784,8 @@ def create_return(
     q_pcs = _parse_qty(pcs, "PCS")
     q_kg = _parse_qty(kg, "KG")
     unit_label = pcs_unit.strip().upper()[:12] or "PCS"
+    has_rt = rt.strip().lower() in ("true", "1", "on", "yes")
+    loc = location.strip().upper()[:50]
     if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
         raise HTTPException(400, "至少輸入一項數量")
 
@@ -784,9 +796,9 @@ def create_return(
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO return_records "
-                "(content, qty_ctn, qty_pcs, pcs_unit, qty_kg) "
-                "VALUES (%s, %s, %s, %s, %s) RETURNING id, created_at",
-                (content, q_ctn, q_pcs, unit_label, q_kg),
+                "(content, qty_ctn, qty_pcs, pcs_unit, qty_kg, has_rt, location) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (content, q_ctn, q_pcs, unit_label, q_kg, has_rt, loc),
             )
             rid, created = cur.fetchone()
             for i, f in enumerate(files):
@@ -816,6 +828,8 @@ def create_return(
         "pcs": q_pcs,
         "pcs_unit": unit_label,
         "kg": q_kg,
+        "has_rt": has_rt,
+        "location": loc,
         "created_at": created.strftime("%Y-%m-%d %H:%M:%S"),
         "images": images,
     }
@@ -932,7 +946,7 @@ def list_returns(date: str = ""):
         cur.execute(
             """
             SELECT r.id, r.content, r.qty_ctn, r.qty_pcs, r.pcs_unit,
-                   r.qty_kg, r.created_at,
+                   r.qty_kg, r.has_rt, r.location, r.created_at,
                    COALESCE(
                        (SELECT array_agg(i.filename ORDER BY i.id)
                         FROM return_images i WHERE i.record_id = r.id),
@@ -983,8 +997,10 @@ def list_returns(date: str = ""):
                 "pcs": float(r[3]),
                 "pcs_unit": r[4],
                 "kg": float(r[5]),
-                "created_at": r[6].strftime("%Y-%m-%d %H:%M:%S"),
-                "images": list(r[7]),
+                "has_rt": r[6],
+                "location": r[7],
+                "created_at": r[8].strftime("%Y-%m-%d %H:%M:%S"),
+                "images": list(r[9]),
             }
             for r in rows
         ],
@@ -997,6 +1013,8 @@ class ReturnUpdate(BaseModel):
     pcs: str = "0"
     kg: str = "0"
     pcs_unit: str = "PCS"
+    rt: bool = False
+    location: str = ""
 
 
 @app.put("/api/returns/{record_id}")
@@ -1010,6 +1028,7 @@ def update_return(record_id: int, body: ReturnUpdate):
     q_pcs = _parse_qty(body.pcs, "PCS")
     q_kg = _parse_qty(body.kg, "KG")
     unit_label = body.pcs_unit.strip().upper()[:12] or "PCS"
+    loc = body.location.strip().upper()[:50]
     if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
         raise HTTPException(400, "至少輸入一項數量")
     conn = get_conn()
@@ -1017,8 +1036,9 @@ def update_return(record_id: int, body: ReturnUpdate):
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE return_records SET content = %s, qty_ctn = %s, "
-            "qty_pcs = %s, pcs_unit = %s, qty_kg = %s WHERE id = %s",
-            (content, q_ctn, q_pcs, unit_label, q_kg, record_id),
+            "qty_pcs = %s, pcs_unit = %s, qty_kg = %s, has_rt = %s, "
+            "location = %s WHERE id = %s",
+            (content, q_ctn, q_pcs, unit_label, q_kg, body.rt, loc, record_id),
         )
         updated = cur.rowcount
     conn.close()

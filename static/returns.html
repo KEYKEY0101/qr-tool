@@ -130,6 +130,43 @@ nav a:hover { color: var(--primary); }
 .qty-box .u-edit:focus { outline: none; border-bottom: 1px solid var(--primary); }
 #qPcs { padding-right: 80px; }
 #tMID { white-space: pre-line; line-height: 1.3; }
+.extra-grid { display: flex; gap: 10px; margin-top: 10px; align-items: stretch; }
+.rt-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 0 16px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-dim);
+    user-select: none;
+    white-space: nowrap;
+}
+.rt-check input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+.rt-check:has(input:checked) {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+.extra-grid input[type=text] {
+    flex: 1;
+    font-size: 1.05rem;
+    padding: 11px 13px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+    min-width: 0;
+}
+.extra-grid input[type=text]:focus { outline: none; border-color: var(--primary); }
+.rt-badge { background: rgba(34,197,94,.15); color: #22c55e; }
 #rContent:focus, .qty-box input:focus { outline: none; border-color: var(--primary); }
 .photo-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .photo-btn {
@@ -393,6 +430,12 @@ nav a:hover { color: var(--primary); }
             <div class="qty-box"><input id="qPcs" type="number" min="0" step="any" placeholder="0"><input id="qUnit" class="u-edit" value="PCS" maxlength="12" title="點擊可修改單位"></div>
             <div class="qty-box"><input id="qKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
         </div>
+        <div class="extra-grid">
+            <label class="rt-check" title="有 RT 就打勾">
+                <input type="checkbox" id="rRt"><span>RT</span>
+            </label>
+            <input id="rLoc" type="text" placeholder="回倉位置（選填，自動轉大寫）" autocomplete="off">
+        </div>
         <div class="photo-row">
             <button class="photo-btn" onclick="$('rFiles').click()">📷 加入照片</button>
             <input id="rFiles" type="file" accept="image/*" multiple style="display:none">
@@ -448,6 +491,12 @@ nav a:hover { color: var(--primary); }
                 <div class="qty-box"><input id="eCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
                 <div class="qty-box"><input id="ePcs" type="number" min="0" step="any" placeholder="0"><input id="eUnit" class="u-edit" maxlength="12" title="點擊可修改單位"></div>
                 <div class="qty-box"><input id="eKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
+            </div>
+            <div class="extra-grid">
+                <label class="rt-check" title="有 RT 就打勾">
+                    <input type="checkbox" id="eRt"><span>RT</span>
+                </label>
+                <input id="eLoc" type="text" placeholder="回倉位置（選填）" autocomplete="off">
             </div>
             <button class="btn" id="saveBtn" onclick="saveEdit()">💾 儲存修改</button>
         </div>
@@ -590,6 +639,8 @@ async function addRecord() {
         fd.append('pcs', pcs);
         fd.append('kg', kg);
         fd.append('pcs_unit', unit);
+        fd.append('rt', $('rRt').checked);
+        fd.append('location', $('rLoc').value.trim().toUpperCase());
         localStorage.setItem('lastUnit', unit);
         pendingFiles.forEach(f => fd.append('files', f));
         const res = await fetch('/api/returns', {method: 'POST', body: fd});
@@ -598,6 +649,8 @@ async function addRecord() {
         $('rContent').value = '';
         $('qCtn').value = ''; $('qPcs').value = ''; $('qKg').value = '';
         $('qUnit').value = unit;  // 保留上次使用的單位
+        $('rRt').checked = false;
+        $('rLoc').value = '';
         pendingFiles = [];
         renderPreviews();
         goToday();
@@ -703,6 +756,12 @@ function qtyBadges(r) {
     if (r.kg > 0) parts.push(fmtNum(r.kg) + ' KG');
     return parts;
 }
+function extraBadges(r) {
+    let html = '';
+    if (r.has_rt) html += '<span class="rec-qty rt-badge">RT</span>';
+    if (r.location) html += `<span class="rec-qty">📍${esc(r.location)}</span>`;
+    return html;
+}
 function renderList() {
     const list = $('recordList');
     list.innerHTML = '';
@@ -712,7 +771,7 @@ function renderList() {
         div.className = 'record';
         const head = document.createElement('div');
         head.className = 'rec-head';
-        const badges = qtyBadges(r).map(t => `<span class="rec-qty">${t}</span>`).join('');
+        const badges = qtyBadges(r).map(t => `<span class="rec-qty">${t}</span>`).join('') + extraBadges(r);
         head.innerHTML = `
             <span class="rec-time">${r.created_at.slice(11, 16)}</span>
             <span class="rec-content"></span>
@@ -751,6 +810,8 @@ function renderDetail() {
     $('ePcs').value = r.pcs > 0 ? fmtNum(r.pcs) : '';
     $('eUnit').value = r.pcs_unit || 'PCS';
     $('eKg').value = r.kg > 0 ? fmtNum(r.kg) : '';
+    $('eRt').checked = !!r.has_rt;
+    $('eLoc').value = r.location || '';
     const ph = $('dPhotos');
     ph.innerHTML = '';
     $('dPhotoSec').style.display = r.images.length ? '' : 'none';
@@ -779,7 +840,11 @@ async function saveEdit() {
         const res = await fetch(`/api/returns/${detailId}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content, ctn, pcs, kg, pcs_unit: unit})
+            body: JSON.stringify({
+                content, ctn, pcs, kg, pcs_unit: unit,
+                rt: $('eRt').checked,
+                location: $('eLoc').value.trim().toUpperCase()
+            })
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已儲存修改');
@@ -829,6 +894,16 @@ $('eContent').addEventListener('input', e => {
     e.target.setSelectionRange(pos, pos);
 });
 $('eUnit').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('rLoc').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('eLoc').addEventListener('input', e => {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);

@@ -111,6 +111,18 @@ nav a:hover { color: var(--primary); }
     min-width: 0;
 }
 #qrInput:focus { outline: none; border-color: var(--primary); }
+.loc-input {
+    width: 100%;
+    margin-top: 10px;
+    font-size: 1rem;
+    padding: 10px 13px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+}
+.loc-input:focus { outline: none; border-color: var(--primary); }
 .btn {
     background: var(--primary);
     color: #fff;
@@ -140,6 +152,14 @@ nav a:hover { color: var(--primary); }
     word-break: break-all;
 }
 #qrMeta { color: var(--text-dim); font-size: .85rem; margin-bottom: 10px; }
+#qrLocView {
+    display: none;
+    color: var(--primary);
+    font-weight: bold;
+    font-size: .95rem;
+    margin: -4px 0 10px;
+    letter-spacing: 1px;
+}
 .result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .btn-sm {
     padding: 8px 16px;
@@ -318,12 +338,14 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <input id="qrInput" type="text" placeholder="輸入內容（自動轉大寫）" autocomplete="off" autofocus>
             <button class="btn" id="genBtn" onclick="generate()">產生二維碼</button>
         </div>
+        <input id="locInput" type="text" class="loc-input" placeholder="📍 位置（選填，自動轉大寫）" autocomplete="off">
     </div>
 
     <div class="card" id="qrResult">
         <img id="qrImg" alt="QR Code">
         <div id="qrContent"></div>
         <div id="qrMeta"></div>
+        <div id="qrLocView"></div>
         <div class="result-btns">
             <a class="btn-sm" id="downloadBtn" href="#" download>⬇ 下載圖片</a>
             <button class="btn-sm" onclick="copyContent()">📋 複製文字</button>
@@ -398,12 +420,17 @@ async function generate() {
         const res = await fetch('/api/generate', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text})
+            body: JSON.stringify({
+                text,
+                location: $('locInput').value.trim().toUpperCase()
+            })
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         const data = await res.json();
         showResult(data, data.qr);
         if (data.db_error) showToast('已產生，但記錄失敗：' + data.db_error);
+        else if (data.times > 1) showToast(`此二維碼已存在（第 ${data.times} 次產生），已顯示原有記錄`);
+        $('locInput').value = '';  // 避免殘留位置寫到下一個二維碼
         $('qrInput').select();
         loadRecords();
     } catch (e) {
@@ -420,6 +447,8 @@ function showResult(record, qrSrc) {
     $('qrContent').textContent = record.content;
     $('qrMeta').textContent = (record.times ? `第 ${record.times} 次產生` : '') +
         (record.created_at ? `　${record.created_at}` : '');
+    $('qrLocView').textContent = record.location ? '📍 ' + record.location : '';
+    $('qrLocView').style.display = record.location ? 'block' : 'none';
     const dl = $('downloadBtn');
     if (record.id) {
         dl.href = `/api/records/${record.id}/qr?download=true`;
@@ -620,11 +649,12 @@ function renderRecords() {
             <td class="time-col">${r.created_at}</td>
             <td><button class="del-btn" title="刪除">✕</button></td>`;
         tr.querySelector('.content-cell').textContent = r.content;
-        if (r.is_favorite || (r.images && r.images.length)) {
+        if (r.is_favorite || (r.images && r.images.length) || r.location) {
             const meta = document.createElement('span');
             meta.className = 'row-meta';
             meta.textContent = (r.is_favorite ? ' ⭐' : '') +
-                (r.images && r.images.length ? ' 📷' + r.images.length : '');
+                (r.images && r.images.length ? ' 📷' + r.images.length : '') +
+                (r.location ? ' 📍' + r.location : '');
             tr.querySelector('.content-cell').appendChild(meta);
         }
         tr.onclick = () => openRecord(r);
@@ -710,6 +740,12 @@ $('qrInput').addEventListener('input', e => {
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);
 });
+$('locInput').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('locInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 let searchTimer;
 $('searchInput').addEventListener('input', () => {
     clearTimeout(searchTimer);

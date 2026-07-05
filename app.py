@@ -111,6 +111,7 @@ def init_db():
                     content TEXT NOT NULL UNIQUE,
                     times INTEGER NOT NULL DEFAULT 1,
                     is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
+                    location TEXT NOT NULL DEFAULT '',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
                 """
@@ -124,6 +125,11 @@ def init_db():
                 cur.execute(
                     "ALTER TABLE qr_records "
                     "ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            if qr_cols and "location" not in qr_cols:
+                cur.execute(
+                    "ALTER TABLE qr_records "
+                    "ADD COLUMN location TEXT NOT NULL DEFAULT ''"
                 )
             cur.execute(
                 """
@@ -391,6 +397,7 @@ async def pin_guard(request: Request, call_next):
 
 class GenerateBody(BaseModel):
     text: str
+    location: str = ""
 
 
 class LoginBody(BaseModel):
@@ -473,10 +480,11 @@ def generate(body: GenerateBody):
     if not content:
         raise HTTPException(400, "內容不能為空")
 
+    loc = body.location.strip().upper()[:50]
     png = make_qr_png(content)
     record = {
-        "id": None, "content": content, "times": None,
-        "created_at": None, "is_favorite": False, "images": [],
+        "id": None, "content": content, "times": None, "created_at": None,
+        "is_favorite": False, "location": loc, "images": [],
     }
 
     if DB_ERROR is None:
@@ -486,12 +494,15 @@ def generate(body: GenerateBody):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO qr_records (content) VALUES (%s)
+                    INSERT INTO qr_records (content, location) VALUES (%s, %s)
                     ON CONFLICT (content) DO UPDATE
-                        SET created_at = NOW(), times = qr_records.times + 1
-                    RETURNING id, content, times, created_at, is_favorite
+                        SET created_at = NOW(), times = qr_records.times + 1,
+                            location = CASE WHEN EXCLUDED.location <> ''
+                                THEN EXCLUDED.location
+                                ELSE qr_records.location END
+                    RETURNING id, content, times, created_at, is_favorite, location
                     """,
-                    (content,),
+                    (content, loc),
                 )
                 row = cur.fetchone()
                 cur.execute(
@@ -505,6 +516,7 @@ def generate(body: GenerateBody):
                     "times": row[2],
                     "created_at": row[3].strftime("%Y-%m-%d %H:%M:%S"),
                     "is_favorite": row[4],
+                    "location": row[5],
                     "images": imgs,
                 }
             conn.close()
@@ -516,7 +528,7 @@ def generate(body: GenerateBody):
 
 
 QR_SELECT = """
-    SELECT id, content, times, created_at, is_favorite,
+    SELECT id, content, times, created_at, is_favorite, location,
            COALESCE(
                (SELECT array_agg(i.filename ORDER BY i.id)
                 FROM qr_images i WHERE i.record_id = qr_records.id),
@@ -532,6 +544,16 @@ def _like_pattern(q: str) -> str:
     return "%" + q.upper() + "%"
 
 
+def _fuzzy_pattern(q: str) -> str:
+    """字元序模糊搜尋：S198 / SEA198 都能匹配 SEAFZN0198"""
+    parts = []
+    for ch in q.upper():
+        if ch in ("\\", "%", "_"):
+            ch = "\\" + ch
+        parts.append(ch)
+    return "%" + "%".join(parts) + "%"
+
+
 def _qr_row_dict(r):
     return {
         "id": r[0],
@@ -539,7 +561,8 @@ def _qr_row_dict(r):
         "times": r[2],
         "created_at": r[3].strftime("%Y-%m-%d %H:%M:%S"),
         "is_favorite": r[4],
-        "images": list(r[5]),
+        "location": r[5],
+        "images": list(r[6]),
     }
 
 
@@ -553,14 +576,19 @@ def records(q: str = "", fav: bool = False):
         where = []
         params = []
         if q:
-            where.append("content ILIKE %s")
-            params.append(_like_pattern(q))
+            # 精確子字串 + 字元序模糊（S198 → SEAFZN0198）
+            where.append("(content ILIKE %s OR content ILIKE %s)")
+            params += [_like_pattern(q), _fuzzy_pattern(q)]
         if fav:
             where.append("is_favorite")
         sql = QR_SELECT
         if where:
             sql += " WHERE " + " AND ".join(where)
-        sql += " ORDER BY created_at DESC LIMIT 300"
+        if q:
+            sql += " ORDER BY (content ILIKE %s) DESC, created_at DESC LIMIT 300"
+            params.append(_like_pattern(q))
+        else:
+            sql += " ORDER BY created_at DESC LIMIT 300"
         cur.execute(sql, params)
         rows = cur.fetchall()
         if q and not fav:
@@ -568,10 +596,11 @@ def records(q: str = "", fav: bool = False):
             cur.execute(
                 """
                 SELECT id, content, qty_ctn, qty_pcs, pcs_unit, qty_kg, created_at
-                FROM return_records WHERE content ILIKE %s
-                ORDER BY created_at DESC LIMIT 100
+                FROM return_records
+                WHERE content ILIKE %s OR content ILIKE %s
+                ORDER BY (content ILIKE %s) DESC, created_at DESC LIMIT 100
                 """,
-                (_like_pattern(q),),
+                (_like_pattern(q), _fuzzy_pattern(q), _like_pattern(q)),
             )
             returns_matches = [
                 {

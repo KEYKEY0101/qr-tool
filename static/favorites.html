@@ -116,6 +116,7 @@ nav a:hover { color: var(--primary); }
     margin-top: 8px;
     font-size: .92rem;
 }
+.fav-card .loc { color: var(--primary); font-size: .82rem; font-weight: bold; margin-top: 4px; }
 .fav-photos { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
 .fav-photos img {
     width: 40px; height: 40px; object-fit: cover;
@@ -225,6 +226,12 @@ async function loadFavs() {
             const txt = document.createElement('div');
             txt.className = 'txt';
             txt.textContent = r.content;
+            let locEl = null;
+            if (r.location) {
+                locEl = document.createElement('div');
+                locEl.className = 'loc';
+                locEl.textContent = '📍 ' + r.location;
+            }
             const un = document.createElement('button');
             un.className = 'unfav';
             un.textContent = '⭐';
@@ -233,6 +240,7 @@ async function loadFavs() {
             card.appendChild(un);
             card.appendChild(qr);
             card.appendChild(txt);
+            if (locEl) card.appendChild(locEl);
             if (r.images.length) {
                 const ph = document.createElement('div');
                 ph.className = 'fav-photos';

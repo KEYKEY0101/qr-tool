@@ -914,7 +914,7 @@ async function delRecord(r) {
 // ---------- WhatsApp 文字 ----------
 function buildWaText() {
     if (!currentRecords.length) return '';
-    const lines = [$('datePick').value + ' 退貨記錄'];
+    const lines = [];
     for (const r of [...currentRecords].reverse()) {  // 由早到晚
         const qty = [];
         if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
@@ -924,11 +924,6 @@ function buildWaText() {
         if (r.location) tag += '回位' + r.location;
         lines.push(`${r.content} ${qty.join(' ')}(${tag})`);
     }
-    const t = [];
-    if (currentTotals.CTN > 0) t.push(fmtNum(currentTotals.CTN) + 'CTN');
-    for (const u of (currentTotals.units || [])) t.push(fmtNum(u.qty) + u.unit);
-    if (currentTotals.KG > 0) t.push(fmtNum(currentTotals.KG) + 'KG');
-    if (t.length) lines.push('合計 ' + t.join(' '));
     return lines.join('\n');
 }
 

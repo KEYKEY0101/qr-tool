@@ -52,6 +52,7 @@ header {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    flex-wrap: wrap;
 }
 header h1 { font-size: 1.15rem; }
 nav { display: flex; gap: 6px; align-items: center; }
@@ -61,6 +62,7 @@ nav a {
     font-size: .95rem;
     padding: 6px 12px;
     border-radius: 8px;
+    white-space: nowrap;
 }
 nav a.active { color: var(--primary); background: var(--hover-row); font-weight: bold; }
 nav a:hover { color: var(--primary); }
@@ -372,6 +374,17 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
     .input-row { flex-direction: column; }
     .btn { width: 100%; }
     .time-col { display: none; }
+    header { padding: 10px 12px; }
+    nav { gap: 2px; }
+    nav a { padding: 6px 8px; font-size: .88rem; }
+    .icon-btn { padding: 6px 8px; font-size: .8rem; white-space: nowrap; }
+    .stack-row { flex-wrap: wrap; }
+    .stack-row input[type=number] { width: 0; flex: 1 1 90px; }
+    .type-check {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 </head>

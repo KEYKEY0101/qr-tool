@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二維碼生成器</title>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --hover-row: #eff6ff;
+    --warn-bg: #fef2f2;
+    --warn-border: #fca5a5;
+    --warn-text: #b91c1c;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+[data-theme="dark"] {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --danger: #f87171;
+    --border: #374151;
+    --input-bg: #111827;
+    --hover-row: #1e3a5f;
+    --warn-bg: #3f1d1d;
+    --warn-border: #7f1d1d;
+    --warn-text: #fca5a5;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+header h1 { font-size: 1.15rem; }
+nav { display: flex; gap: 6px; align-items: center; }
+nav a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: .95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+nav a.active { color: var(--primary); background: var(--hover-row); font-weight: bold; }
+nav a:hover { color: var(--primary); }
+.header-btns { display: flex; gap: 8px; }
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: .85rem;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px;
+    display: grid;
+    gap: 16px;
+}
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+}
+.banner {
+    display: none;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: .88rem;
+}
+.input-row { display: flex; gap: 10px; }
+#qrInput {
+    flex: 1;
+    font-size: 1.25rem;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 0;
+}
+#qrInput:focus { outline: none; border-color: var(--primary); }
+.btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+#qrResult { display: none; text-align: center; }
+#qrResult img {
+    width: 260px;
+    max-width: 80vw;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px;
+}
+#qrContent {
+    font-size: 1.3rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 10px 0 4px;
+    word-break: break-all;
+}
+#qrMeta { color: var(--text-dim); font-size: .85rem; margin-bottom: 10px; }
+.result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn-sm {
+    padding: 8px 16px;
+    font-size: .9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+.btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+.history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.history-head h2 { font-size: 1.05rem; }
+#searchInput {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+    width: 220px;
+    max-width: 100%;
+}
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { padding: 9px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text-dim); font-weight: 600; font-size: .82rem; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--hover-row); }
+td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; }
+.del-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px 8px;
+}
+.time-col, .times-col { color: var(--text-dim); white-space: nowrap; }
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 20px; display: none; }
+.phone-box { text-align: center; }
+.phone-grid { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+.phone-grid h3 { font-size: .95rem; margin-bottom: 10px; }
+.phone-box img { width: 140px; background: #fff; border-radius: 8px; padding: 4px; border: 1px solid var(--border); }
+.phone-box p { color: var(--text-dim); font-size: .85rem; margin-top: 8px; word-break: break-all; }
+.phone-box .hint { font-size: .78rem; color: var(--primary); }
+#resultPhotos {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.rp-item { position: relative; }
+.rp-item img {
+    width: 72px; height: 72px; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
+}
+.rp-item .rp-rm {
+    position: absolute; top: -6px; right: -6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: .7rem;
+    width: 20px; height: 20px;
+    line-height: 1;
+}
+.row-meta { color: var(--text-dim); font-weight: normal; font-size: .82rem; }
+.ret-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 6px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.ret-row:hover { background: var(--hover-row); }
+.ret-row:last-child { border-bottom: none; }
+.ret-date { color: var(--text-dim); font-size: .82rem; white-space: nowrap; }
+.ret-content { font-weight: bold; letter-spacing: 1px; word-break: break-all; flex: 1; min-width: 100px; }
+.ret-qty {
+    background: var(--hover-row);
+    color: var(--primary);
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 3px 9px;
+    white-space: nowrap;
+    font-size: .85rem;
+}
+.overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 60;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 20px;
+}
+.overlay.show { display: flex; }
+.overlay img { max-width: 92vw; max-height: 78vh; border-radius: 10px; background: #fff; }
+.overlay .cap { color: #fff; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; word-break: break-all; text-align: center; }
+#toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: .9rem;
+    opacity: 0;
+    transition: opacity .25s;
+    pointer-events: none;
+    max-width: 90vw;
+    z-index: 99;
+}
+#toast.show { opacity: 1; }
+@media (max-width: 560px) {
+    .input-row { flex-direction: column; }
+    .btn { width: 100%; }
+    .time-col { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/" class="active">📦 二維碼生成器</a>
+        <a href="/favorites">⭐ 常用二維碼</a>
+        <a href="/returns">↩️ 退貨記錄</a>
+    </nav>
+    <div class="header-btns">
+        <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+        <button class="icon-btn" onclick="togglePhoneBox()">📱 手機連線</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="banner" id="dbBanner"></div>
+    <div class="banner" id="secBanner">
+        <span id="secMsg"></span>
+        <button class="btn-sm" id="unlockBtn" onclick="unlockRemote()" style="margin-left:10px">解除封鎖</button>
+    </div>
+
+    <div class="card phone-box" id="phoneBox" style="display:none">
+        <div class="phone-grid">
+            <div>
+                <h3>📶 同網路（家裡 Wi-Fi）</h3>
+                <img src="/api/urlqr?target=lan" alt="同網路連線">
+                <p id="phoneUrlLan"></p>
+            </div>
+            <div id="remoteBox" style="display:none">
+                <h3>🌏 遠端（公司 / 4G）</h3>
+                <img src="/api/urlqr?target=remote" alt="遠端連線">
+                <p id="phoneUrlRemote"></p>
+                <p class="hint">可加入手機書籤；第一次開啟需輸入 PIN 碼</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="input-row">
+            <input id="qrInput" type="text" placeholder="輸入內容（自動轉大寫）" autocomplete="off" autofocus>
+            <button class="btn" id="genBtn" onclick="generate()">產生二維碼</button>
+        </div>
+    </div>
+
+    <div class="card" id="qrResult">
+        <img id="qrImg" alt="QR Code">
+        <div id="qrContent"></div>
+        <div id="qrMeta"></div>
+        <div class="result-btns">
+            <a class="btn-sm" id="downloadBtn" href="#" download>⬇ 下載圖片</a>
+            <button class="btn-sm" onclick="copyContent()">📋 複製文字</button>
+            <button class="btn-sm" id="favBtn" onclick="toggleFav()" style="display:none">☆ 加入常用</button>
+            <button class="btn-sm" id="photoBtn" onclick="$('qrPhotoInput').click()" style="display:none">📷 貨物相片</button>
+            <input id="qrPhotoInput" type="file" accept="image/*" multiple style="display:none">
+        </div>
+        <div id="resultPhotos"></div>
+    </div>
+
+    <div class="card">
+        <div class="history-head">
+            <h2>📄 歷史記錄</h2>
+            <input id="searchInput" type="text" placeholder="搜尋…">
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>內容</th>
+                    <th class="times-col">次數</th>
+                    <th class="time-col">最後產生時間</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+        </table>
+        <div id="emptyMsg">尚無記錄</div>
+    </div>
+
+    <div class="card" id="returnsCard" style="display:none">
+        <h2 style="font-size:1.05rem;margin-bottom:10px">↩️ 退貨記錄中找到（點擊查看）</h2>
+        <div id="returnsList"></div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+    <img id="overlayImg" src="" alt="">
+    <div class="cap" id="overlayCap"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentRecords = [];
+
+// ---------- 主題 ----------
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'dark' ? '☀️ 淺色' : '🌙 深色';
+    localStorage.setItem('appTheme', t);
+}
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('appTheme') || 'light');
+
+// ---------- 手機連線 ----------
+function togglePhoneBox() {
+    const box = $('phoneBox');
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+}
+
+// ---------- 產生 ----------
+let currentRecord = null;
+
+async function generate() {
+    const text = $('qrInput').value.trim().toUpperCase();
+    if (!text) { showToast('請先輸入內容'); return; }
+    $('genBtn').disabled = true;
+    try {
+        const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const data = await res.json();
+        showResult(data, data.qr);
+        if (data.db_error) showToast('已產生，但記錄失敗：' + data.db_error);
+        $('qrInput').select();
+        loadRecords();
+    } catch (e) {
+        showToast('產生失敗：' + e.message);
+    } finally {
+        $('genBtn').disabled = false;
+    }
+}
+
+function showResult(record, qrSrc) {
+    currentRecord = record;
+    $('qrResult').style.display = 'block';
+    $('qrImg').src = qrSrc;
+    $('qrContent').textContent = record.content;
+    $('qrMeta').textContent = (record.times ? `第 ${record.times} 次產生` : '') +
+        (record.created_at ? `　${record.created_at}` : '');
+    const dl = $('downloadBtn');
+    if (record.id) {
+        dl.href = `/api/records/${record.id}/qr?download=true`;
+        dl.removeAttribute('download');
+        $('favBtn').style.display = '';
+        $('photoBtn').style.display = '';
+        updateFavBtn();
+    } else {
+        dl.href = qrSrc;
+        dl.setAttribute('download', record.content + '.png');
+        $('favBtn').style.display = 'none';
+        $('photoBtn').style.display = 'none';
+    }
+    renderResultPhotos();
+    $('qrResult').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+// ---------- 常用 ----------
+function updateFavBtn() {
+    $('favBtn').textContent = currentRecord.is_favorite ? '⭐ 已加入常用' : '☆ 加入常用';
+}
+
+async function toggleFav() {
+    if (!currentRecord || !currentRecord.id) return;
+    const rec = currentRecord;  // 鎖定當下的記錄，避免請求期間切換到別筆
+    const on = !rec.is_favorite;
+    try {
+        const res = await fetch(`/api/records/${rec.id}/favorite`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({on})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        rec.is_favorite = on;
+        if (rec === currentRecord) updateFavBtn();
+        showToast(on ? '已加入常用二維碼' : '已從常用移除');
+        loadRecords();
+    } catch (e) {
+        showToast('操作失敗：' + e.message);
+    }
+}
+
+// ---------- 貨物相片 ----------
+$('qrPhotoInput').addEventListener('change', async e => {
+    if (!currentRecord || !currentRecord.id || !e.target.files.length) return;
+    const rec = currentRecord;  // 鎖定當下的記錄
+    const fd = new FormData();
+    for (const f of e.target.files) fd.append('files', f);
+    e.target.value = '';
+    showToast('相片上傳中…');
+    try {
+        const res = await fetch(`/api/records/${rec.id}/images`, {
+            method: 'POST',
+            body: fd
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const data = await res.json();
+        rec.images = data.images;
+        if (rec === currentRecord) renderResultPhotos();
+        showToast('已加入貨物相片');
+        loadRecords();
+    } catch (err) {
+        showToast('上傳失敗：' + err.message);
+    }
+});
+
+function renderResultPhotos() {
+    const box = $('resultPhotos');
+    box.innerHTML = '';
+    if (!currentRecord) return;
+    for (const rel of currentRecord.images || []) {
+        const item = document.createElement('div');
+        item.className = 'rp-item';
+        const img = document.createElement('img');
+        img.src = '/uploads/' + rel;
+        img.loading = 'lazy';
+        img.onclick = () => showImage('/uploads/' + rel, currentRecord.content);
+        const rm = document.createElement('button');
+        rm.className = 'rp-rm';
+        rm.textContent = '✕';
+        rm.title = '刪除相片';
+        rm.onclick = () => delPhoto(rel);
+        item.appendChild(img);
+        item.appendChild(rm);
+        box.appendChild(item);
+    }
+}
+
+async function delPhoto(rel) {
+    if (!confirm('確定刪除這張相片？')) return;
+    const rec = currentRecord;  // 鎖定當下的記錄
+    try {
+        const res = await fetch(
+            `/api/qrimg?record_id=${rec.id}&filename=${encodeURIComponent(rel)}`,
+            {method: 'DELETE'}
+        );
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        rec.images = rec.images.filter(x => x !== rel);
+        if (rec === currentRecord) renderResultPhotos();
+        showToast('已刪除相片');
+        loadRecords();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
+
+function copyContent() {
+    const text = $('qrContent').textContent;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast('已複製：' + text))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);  // http 環境（手機經 IP 連線）沒有 clipboard API
+    }
+}
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        showToast('已複製：' + text);
+    } catch (e) {
+        showToast('複製失敗');
+    }
+    ta.remove();
+}
+
+// ---------- 記錄 ----------
+let loadSeq = 0;
+async function loadRecords() {
+    const q = $('searchInput').value.trim();
+    const seq = ++loadSeq;  // 防止慢的舊請求蓋掉新結果
+    try {
+        const res = await fetch('/api/records?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        if (seq !== loadSeq) return;
+        if (!res.ok || !Array.isArray(data.records)) return;
+        currentRecords = data.records;
+        renderRecords();
+        renderReturnsMatches(data.returns || []);
+    } catch (e) { /* 資料庫未連線時略過 */ }
+}
+
+function renderReturnsMatches(matches) {
+    const card = $('returnsCard');
+    const list = $('returnsList');
+    list.innerHTML = '';
+    card.style.display = matches.length ? '' : 'none';
+    for (const r of matches) {
+        const row = document.createElement('div');
+        row.className = 'ret-row';
+        const badges = [];
+        if (r.ctn > 0) badges.push(fmtNum(r.ctn) + ' CTN');
+        if (r.pcs > 0) badges.push(fmtNum(r.pcs) + ' ' + esc(r.pcs_unit || 'PCS'));
+        if (r.kg > 0) badges.push(fmtNum(r.kg) + ' KG');
+        row.innerHTML = `
+            <span class="ret-date">${r.date}</span>
+            <span class="ret-content"></span>
+            ${badges.map(t => `<span class="ret-qty">${t}</span>`).join('')}
+            <span style="color:var(--text-dim)">›</span>`;
+        row.querySelector('.ret-content').textContent = r.content;
+        row.onclick = () => {
+            location.href = `/returns?open=${r.id}&date=${r.date}`;
+        };
+        list.appendChild(row);
+    }
+}
+
+function fmtNum(n) {
+    return Number.isInteger(Number(n)) ? String(Number(n)) : Number(n).toFixed(2);
+}
+
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+function renderRecords() {
+    const body = $('recordBody');
+    body.innerHTML = '';
+    $('emptyMsg').style.display = currentRecords.length ? 'none' : 'block';
+    for (const r of currentRecords) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="content-cell"></td>
+            <td class="times-col">${r.times}</td>
+            <td class="time-col">${r.created_at}</td>
+            <td><button class="del-btn" title="刪除">✕</button></td>`;
+        tr.querySelector('.content-cell').textContent = r.content;
+        if (r.is_favorite || (r.images && r.images.length)) {
+            const meta = document.createElement('span');
+            meta.className = 'row-meta';
+            meta.textContent = (r.is_favorite ? ' ⭐' : '') +
+                (r.images && r.images.length ? ' 📷' + r.images.length : '');
+            tr.querySelector('.content-cell').appendChild(meta);
+        }
+        tr.onclick = () => openRecord(r);
+        tr.querySelector('.del-btn').onclick = ev => { ev.stopPropagation(); deleteRecord(r); };
+        body.appendChild(tr);
+    }
+}
+
+function openRecord(r) {
+    $('qrInput').value = r.content;
+    showResult(r, `/api/records/${r.id}/qr`);
+}
+
+async function deleteRecord(r) {
+    if (!confirm(`確定刪除「${r.content}」？`)) return;
+    try {
+        const res = await fetch(`/api/records/${r.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        if (currentRecord && currentRecord.id === r.id) {
+            currentRecord = null;
+            $('qrResult').style.display = 'none';
+        }
+        showToast('已刪除');
+        loadRecords();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+// ---------- 狀態 ----------
+async function checkStatus() {
+    try {
+        const res = await fetch('/api/status');
+        const s = await res.json();
+        const banner = $('dbBanner');
+        if (!s.db_ok) {
+            banner.style.display = 'block';
+            banner.textContent = '⚠ 資料庫未連線（記錄功能停用）：請編輯 config.json 填入正確密碼後重新啟動。' +
+                '錯誤：' + (s.db_error || '').slice(0, 200);
+        } else {
+            banner.style.display = 'none';
+        }
+        $('phoneUrlLan').textContent = `http://${s.lan_ip}:${s.port}/`;
+        if (s.remote_url) {
+            $('remoteBox').style.display = '';
+            $('phoneUrlRemote').textContent = s.remote_url + '/';
+        }
+        if (s.remote_blocked) {
+            $('secBanner').style.display = 'block';
+            $('secMsg').textContent = '🚫 遠端連線已封鎖（PIN 碼連續錯誤過多' +
+                (s.last_fail_ip ? '，最後來源 ' + s.last_fail_ip : '') +
+                (s.blocked_at ? '，時間 ' + s.blocked_at : '') + '）';
+        } else {
+            $('secBanner').style.display = 'none';
+        }
+    } catch (e) { /* ignore */ }
+}
+
+async function unlockRemote() {
+    if (!confirm('確定解除遠端封鎖？')) return;
+    try {
+        const res = await fetch('/api/unlock_remote', {method: 'POST'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已解除遠端封鎖');
+        checkStatus();
+    } catch (e) {
+        showToast('解除失敗：' + e.message);
+    }
+}
+
+// ---------- 其他 ----------
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+$('qrInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+$('qrInput').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+let searchTimer;
+$('searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadRecords, 250);
+});
+
+checkStatus();
+loadRecords();
+</script>
+</body>
+</html>

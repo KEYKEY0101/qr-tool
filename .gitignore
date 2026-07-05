@@ -1,0 +1,18 @@
+# 機密設定（含資料庫密碼與 PIN 碼）— 絕不上傳
+config.json
+security.json
+
+# 使用者上傳的相片
+uploads/
+
+# 外部工具執行檔
+ngrok.exe
+cloudflared.exe
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+
+# 其他
+*.log

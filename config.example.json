@@ -1,0 +1,17 @@
+{
+    "db": {
+        "host": "localhost",
+        "port": 5432,
+        "dbname": "qr_tool",
+        "user": "postgres",
+        "password": "你的PostgreSQL密碼"
+    },
+    "server": {
+        "port": 8100
+    },
+    "remote": {
+        "mode": "portforward",
+        "pin": "設定你的PIN碼",
+        "gateway": ""
+    }
+}

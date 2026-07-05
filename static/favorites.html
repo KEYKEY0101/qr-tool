@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常用二維碼</title>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --hover-row: #eff6ff;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+[data-theme="dark"] {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --danger: #f87171;
+    --border: #374151;
+    --input-bg: #111827;
+    --hover-row: #1e3a5f;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+nav { display: flex; gap: 6px; align-items: center; }
+nav a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: .95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+nav a.active { color: var(--primary); background: var(--hover-row); font-weight: bold; }
+nav a:hover { color: var(--primary); }
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: .85rem;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+.top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.top-row h2 { font-size: 1.1rem; }
+#searchInput {
+    padding: 9px 13px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+    width: 240px;
+    max-width: 100%;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+}
+.fav-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: relative;
+}
+.fav-card img.qr {
+    width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 4px;
+    cursor: pointer;
+}
+.fav-card .txt {
+    font-weight: bold;
+    letter-spacing: 1px;
+    word-break: break-all;
+    margin-top: 8px;
+    font-size: .92rem;
+}
+.fav-photos { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.fav-photos img {
+    width: 40px; height: 40px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
+}
+.unfav {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .8rem;
+    padding: 3px 7px;
+}
+.unfav:hover { border-color: var(--danger); }
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 40px 10px; display: none; }
+.overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 60;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 20px;
+}
+.overlay.show { display: flex; }
+.overlay img { max-width: 92vw; max-height: 78vh; border-radius: 10px; background: #fff; }
+.overlay .cap { color: #fff; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; word-break: break-all; text-align: center; }
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 10px; font-size: .9rem;
+    opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 90vw;
+    z-index: 99;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/">📦 二維碼生成器</a>
+        <a href="/favorites" class="active">⭐ 常用二維碼</a>
+        <a href="/returns">↩️ 退貨記錄</a>
+    </nav>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+</header>
+
+<div class="container">
+    <div class="top-row">
+        <h2>⭐ 常用二維碼</h2>
+        <input id="searchInput" type="text" placeholder="搜尋…">
+    </div>
+    <div class="grid" id="favGrid"></div>
+    <div id="emptyMsg">尚無常用二維碼 — 在主頁產生二維碼後按「☆ 加入常用」</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+    <img id="overlayImg" src="" alt="">
+    <div class="cap" id="overlayCap"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'dark' ? '☀️ 淺色' : '🌙 深色';
+    localStorage.setItem('appTheme', t);
+}
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('appTheme') || 'light');
+
+let loadSeq = 0;
+async function loadFavs() {
+    const q = $('searchInput').value.trim();
+    const seq = ++loadSeq;  // 防止慢的舊請求蓋掉新結果
+    try {
+        const res = await fetch('/api/records?fav=true&q=' + encodeURIComponent(q));
+        const data = await res.json();
+        if (seq !== loadSeq) return;
+        if (!res.ok || !Array.isArray(data.records)) {
+            showToast('載入失敗');
+            return;
+        }
+        const grid = $('favGrid');
+        if (data.db_ok === false) {
+            grid.innerHTML = '';
+            $('emptyMsg').textContent = '⚠ 資料庫未連線，無法載入常用二維碼';
+            $('emptyMsg').style.display = 'block';
+            return;
+        }
+        $('emptyMsg').textContent = '尚無常用二維碼 — 在主頁產生二維碼後按「☆ 加入常用」';
+        grid.innerHTML = '';
+        $('emptyMsg').style.display = data.records.length ? 'none' : 'block';
+        for (const r of data.records) {
+            const card = document.createElement('div');
+            card.className = 'fav-card';
+            const qr = document.createElement('img');
+            qr.className = 'qr';
+            qr.loading = 'lazy';
+            qr.src = `/api/records/${r.id}/qr`;
+            qr.onclick = () => showImage(qr.src, r.content);
+            const txt = document.createElement('div');
+            txt.className = 'txt';
+            txt.textContent = r.content;
+            const un = document.createElement('button');
+            un.className = 'unfav';
+            un.textContent = '⭐';
+            un.title = '從常用移除';
+            un.onclick = () => removeFav(r);
+            card.appendChild(un);
+            card.appendChild(qr);
+            card.appendChild(txt);
+            if (r.images.length) {
+                const ph = document.createElement('div');
+                ph.className = 'fav-photos';
+                for (const rel of r.images) {
+                    const img = document.createElement('img');
+                    img.src = '/uploads/' + rel;
+                    img.loading = 'lazy';
+                    img.onclick = () => showImage('/uploads/' + rel, r.content);
+                    ph.appendChild(img);
+                }
+                card.appendChild(ph);
+            }
+            grid.appendChild(card);
+        }
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+
+async function removeFav(r) {
+    if (!confirm(`把「${r.content}」從常用移除？`)) return;
+    try {
+        const res = await fetch(`/api/records/${r.id}/favorite`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({on: false})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已從常用移除');
+        loadFavs();
+    } catch (e) {
+        showToast('操作失敗：' + e.message);
+    }
+}
+
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
+
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+let searchTimer;
+$('searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadFavs, 250);
+});
+
+loadFavs();
+</script>
+</body>
+</html>

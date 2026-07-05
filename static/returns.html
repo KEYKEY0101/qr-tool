@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>退貨記錄</title>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --hover-row: #eff6ff;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+    --badge-bg: #eff6ff;
+}
+[data-theme="dark"] {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --danger: #f87171;
+    --border: #374151;
+    --input-bg: #111827;
+    --hover-row: #1e3a5f;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+    --badge-bg: #1e3a5f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+nav { display: flex; gap: 6px; align-items: center; }
+nav a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: .95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+nav a.active { color: var(--primary); background: var(--badge-bg); font-weight: bold; }
+nav a:hover { color: var(--primary); }
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: .85rem;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+}
+.card h2 { font-size: 1.05rem; margin-bottom: 14px; }
+#rContent {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 11px 13px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+}
+.qty-grid { display: flex; gap: 10px; margin-top: 10px; }
+.qty-box { flex: 1; position: relative; min-width: 0; }
+.qty-box input {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 11px 13px;
+    padding-right: 46px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+}
+.qty-box .u {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: .8rem;
+    font-weight: bold;
+    pointer-events: none;
+}
+.qty-box .u-edit {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 62px;
+    padding: 2px 2px 3px;
+    border: none;
+    border-bottom: 1px dashed var(--text-dim);
+    border-radius: 0;
+    background: transparent;
+    color: var(--primary);
+    font-size: .8rem;
+    font-weight: bold;
+    text-align: right;
+    text-transform: uppercase;
+}
+.qty-box .u-edit:focus { outline: none; border-bottom: 1px solid var(--primary); }
+#qPcs { padding-right: 80px; }
+#tMID { white-space: pre-line; line-height: 1.3; }
+#rContent:focus, .qty-box input:focus { outline: none; border-color: var(--primary); }
+.photo-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.photo-btn {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: none;
+    color: var(--text-dim);
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: .9rem;
+}
+.photo-btn:hover { border-color: var(--primary); color: var(--primary); }
+#previews { display: flex; gap: 8px; flex-wrap: wrap; }
+#previews img {
+    width: 58px; height: 58px; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--border);
+    cursor: pointer;
+}
+.btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 26px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    margin-top: 12px;
+    width: 100%;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.date-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.date-row input[type=date] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: .95rem;
+}
+.nav-btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+.nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+.totals { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.total-box {
+    flex: 1 1 100px;
+    background: var(--badge-bg);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.total-box .num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+.total-box .lbl { font-size: .8rem; color: var(--text-dim); margin-top: 2px; }
+.record {
+    border-bottom: 1px solid var(--border);
+    padding: 13px 6px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+.record:hover { background: var(--hover-row); }
+.record:last-child { border-bottom: none; }
+.rec-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-time { color: var(--text-dim); font-size: .82rem; white-space: nowrap; }
+.rec-content { font-weight: bold; letter-spacing: 1px; word-break: break-all; flex: 1; min-width: 120px; }
+.rec-qty {
+    background: var(--badge-bg);
+    color: var(--primary);
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    font-size: .88rem;
+}
+.rec-meta { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
+.mini-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 5px 9px;
+    font-size: .9rem;
+}
+.mini-btn:hover { border-color: var(--primary); }
+.mini-btn.del { color: var(--danger); }
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 20px; display: none; }
+
+/* 日期總覽 */
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.day-head h2 { margin-bottom: 0; }
+.btn-today {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: .95rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-today:hover { background: var(--primary-hover); }
+.day-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.day-row:hover { background: var(--hover-row); }
+.day-row:last-child { border-bottom: none; }
+.day-date { font-weight: bold; font-size: 1.02rem; white-space: nowrap; }
+.day-count { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
+.day-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.day-arrow { color: var(--text-dim); font-size: 1.1rem; }
+#dayEmpty { text-align: center; color: var(--text-dim); padding: 24px 10px; }
+.day-page-bar { display: flex; align-items: center; gap: 12px; }
+.day-page-title { font-weight: bold; font-size: 1.05rem; }
+
+/* 詳細頁 */
+.detail-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 40;
+    overflow-y: auto;
+    padding: 20px 12px 40px;
+}
+.detail-overlay.show { display: block; }
+.detail-panel {
+    max-width: 640px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+}
+.detail-top { display: flex; align-items: flex-start; gap: 10px; }
+.detail-top h2 { font-size: 1.2rem; letter-spacing: 1px; word-break: break-all; flex: 1; }
+.detail-meta { color: var(--text-dim); font-size: .85rem; margin-top: 6px; }
+.detail-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.detail-sec { margin-top: 18px; }
+.detail-sec h3 { font-size: .95rem; margin-bottom: 10px; color: var(--text-dim); }
+.detail-photos { display: flex; gap: 8px; flex-wrap: wrap; }
+.detail-photos img {
+    width: 84px; height: 84px; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
+}
+.d-qr-sec { text-align: center; margin-top: 14px; }
+.d-qr-sec img {
+    width: 190px;
+    max-width: 70vw;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    cursor: pointer;
+}
+.e-content {
+    width: 100%;
+    font-size: 1.05rem;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+}
+.e-content:focus { outline: none; border-color: var(--primary); }
+#ePcs { padding-right: 80px; }
+#saveBtn { margin-top: 12px; }
+
+.overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 60;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 20px;
+}
+.overlay.show { display: flex; }
+.overlay img { max-width: 92vw; max-height: 78vh; border-radius: 10px; background: #fff; }
+.overlay .cap { color: #fff; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; word-break: break-all; text-align: center; }
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 10px; font-size: .9rem;
+    opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 90vw;
+    z-index: 99;
+}
+#toast.show { opacity: 1; }
+@media (max-width: 560px) {
+    .qty-grid { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/">📦 二維碼生成器</a>
+        <a href="/favorites">⭐ 常用二維碼</a>
+        <a href="/returns" class="active">↩️ 退貨記錄</a>
+    </nav>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+</header>
+
+<div class="container">
+
+<!-- 第一層：日期總覽 -->
+<div id="dayView">
+    <div class="card">
+        <div class="day-head">
+            <h2>📅 退貨日誌</h2>
+            <button class="btn-today" onclick="showDay(todayStr())">➕ 今天的退貨</button>
+        </div>
+        <div id="dayList"></div>
+        <div id="dayEmpty" style="display:none">尚無退貨記錄，點右上「➕ 今天的退貨」開始</div>
+    </div>
+</div>
+
+<!-- 第二層：單日頁面 -->
+<div id="dayPage" style="display:none">
+    <div class="day-page-bar">
+        <button class="nav-btn" onclick="backToDays()">← 日期列表</button>
+        <span class="day-page-title" id="dayPageTitle"></span>
+    </div>
+
+    <div class="card" id="addCard">
+        <h2>➕ 新增退貨</h2>
+        <input id="rContent" type="text" placeholder="退貨內容（自動轉大寫）" autocomplete="off">
+        <div class="qty-grid">
+            <div class="qty-box"><input id="qCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
+            <div class="qty-box"><input id="qPcs" type="number" min="0" step="any" placeholder="0"><input id="qUnit" class="u-edit" value="PCS" maxlength="12" title="點擊可修改單位"></div>
+            <div class="qty-box"><input id="qKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
+        </div>
+        <div class="photo-row">
+            <button class="photo-btn" onclick="$('rFiles').click()">📷 加入照片</button>
+            <input id="rFiles" type="file" accept="image/*" multiple style="display:none">
+            <div id="previews"></div>
+        </div>
+        <button class="btn" id="addBtn" onclick="addRecord()">新增退貨記錄</button>
+    </div>
+
+    <div class="card">
+        <input type="date" id="datePick" style="display:none">
+        <div class="totals" style="margin-top:0">
+            <div class="total-box"><div class="num" id="tCTN">0</div><div class="lbl">CTN 箱</div></div>
+            <div class="total-box"><div class="num" id="tMID">0</div><div class="lbl">件數（可自訂單位）</div></div>
+            <div class="total-box"><div class="num" id="tKG">0</div><div class="lbl">KG 公斤</div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📄 當日記錄（點擊顯示二維碼／修改資料）</h2>
+        <div id="recordList"></div>
+        <div id="emptyMsg">這一天沒有退貨記錄</div>
+    </div>
+</div><!-- /dayPage -->
+
+</div>
+
+<!-- 詳細頁 -->
+<div class="detail-overlay" id="detailOverlay">
+    <div class="detail-panel">
+        <div class="detail-top">
+            <div style="flex:1">
+                <h2 id="dContent"></h2>
+            </div>
+            <button class="mini-btn" onclick="closeDetail()">✕ 關閉</button>
+        </div>
+        <div class="detail-sec d-qr-sec">
+            <img id="dQrImg" alt="QR" title="點擊放大">
+        </div>
+        <div class="detail-sec">
+            <h3>✏️ 修改資料（打錯可更正）</h3>
+            <input id="eContent" type="text" class="e-content" autocomplete="off" placeholder="退貨內容">
+            <div class="qty-grid" style="margin-top:10px">
+                <div class="qty-box"><input id="eCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
+                <div class="qty-box"><input id="ePcs" type="number" min="0" step="any" placeholder="0"><input id="eUnit" class="u-edit" maxlength="12" title="點擊可修改單位"></div>
+                <div class="qty-box"><input id="eKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
+            </div>
+            <button class="btn" id="saveBtn" onclick="saveEdit()">💾 儲存修改</button>
+        </div>
+        <div class="detail-sec" id="dPhotoSec">
+            <h3>📷 照片</h3>
+            <div class="detail-photos" id="dPhotos"></div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+    <img id="overlayImg" src="" alt="">
+    <div class="cap" id="overlayCap"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let pendingFiles = [];
+let currentRecords = [];
+let detailId = null;
+
+// ---------- 主題 ----------
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'dark' ? '☀️ 淺色' : '🌙 深色';
+    localStorage.setItem('appTheme', t);
+}
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('appTheme') || 'light');
+
+// ---------- 日期 ----------
+function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+function weekdayOf(dateStr) {
+    return WEEKDAYS[new Date(dateStr + 'T00:00:00').getDay()];
+}
+
+// ---------- 第一層：日期總覽 ----------
+async function loadDays() {
+    try {
+        const res = await fetch('/api/returns/days');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        const list = $('dayList');
+        list.innerHTML = '';
+        if (data.db_ok === false) {
+            $('dayEmpty').textContent = '⚠ 資料庫未連線，無法載入記錄';
+            $('dayEmpty').style.display = 'block';
+            return;
+        }
+        $('dayEmpty').style.display = data.days.length ? 'none' : 'block';
+        $('dayEmpty').textContent = '尚無退貨記錄，點右上「➕ 今天的退貨」開始';
+        for (const d of data.days) {
+            const row = document.createElement('div');
+            row.className = 'day-row';
+            const badges = [];
+            if (d.ctn > 0) badges.push(fmtNum(d.ctn) + ' CTN');
+            for (const u of (d.units || [])) badges.push(fmtNum(u.qty) + ' ' + esc(u.unit));
+            if (d.kg > 0) badges.push(fmtNum(d.kg) + ' KG');
+            row.innerHTML = `
+                <span class="day-date">${d.date}（${weekdayOf(d.date)}）</span>
+                <span class="day-count">${d.count} 筆</span>
+                <span class="day-badges">${badges.map(t => `<span class="rec-qty">${t}</span>`).join('')}</span>
+                <span class="day-arrow">›</span>`;
+            row.onclick = () => showDay(d.date);
+            list.appendChild(row);
+        }
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+
+function showDay(date) {
+    $('datePick').value = date;
+    $('dayView').style.display = 'none';
+    $('dayPage').style.display = '';
+    loadRecords();
+    window.scrollTo(0, 0);
+}
+
+function backToDays() {
+    closeDetail();
+    $('dayPage').style.display = 'none';
+    $('dayView').style.display = '';
+    loadDays();
+    window.scrollTo(0, 0);
+}
+
+function updateDayPageChrome() {
+    const d = $('datePick').value;
+    $('dayPageTitle').textContent = `${d}（${weekdayOf(d)}）`;
+    // 只有「今天」的頁面才能新增退貨
+    $('addCard').style.display = d === todayStr() ? '' : 'none';
+}
+
+function goToday() { $('datePick').value = todayStr(); loadRecords(); }
+
+// ---------- 照片預覽 ----------
+$('rFiles').addEventListener('change', () => {
+    for (const f of $('rFiles').files) pendingFiles.push(f);
+    $('rFiles').value = '';
+    renderPreviews();
+});
+function renderPreviews() {
+    const box = $('previews');
+    box.querySelectorAll('img').forEach(img => URL.revokeObjectURL(img.src));
+    box.innerHTML = '';
+    pendingFiles.forEach((f, i) => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f);
+        img.title = '點擊移除';
+        img.onclick = () => { pendingFiles.splice(i, 1); renderPreviews(); };
+        box.appendChild(img);
+    });
+}
+
+// ---------- 新增記錄 ----------
+async function addRecord() {
+    const content = $('rContent').value.trim().toUpperCase();
+    const ctn = $('qCtn').value.trim() || '0';
+    const pcs = $('qPcs').value.trim() || '0';
+    const kg = $('qKg').value.trim() || '0';
+    const unit = $('qUnit').value.trim().toUpperCase() || 'PCS';
+    if (!content) { showToast('請輸入退貨內容'); return; }
+    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
+        showToast('至少輸入一項數量'); return;
+    }
+    $('addBtn').disabled = true;
+    $('addBtn').textContent = '上傳中…';
+    try {
+        const fd = new FormData();
+        fd.append('content', content);
+        fd.append('ctn', ctn);
+        fd.append('pcs', pcs);
+        fd.append('kg', kg);
+        fd.append('pcs_unit', unit);
+        localStorage.setItem('lastUnit', unit);
+        pendingFiles.forEach(f => fd.append('files', f));
+        const res = await fetch('/api/returns', {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已新增退貨記錄');
+        $('rContent').value = '';
+        $('qCtn').value = ''; $('qPcs').value = ''; $('qKg').value = '';
+        $('qUnit').value = unit;  // 保留上次使用的單位
+        pendingFiles = [];
+        renderPreviews();
+        goToday();
+    } catch (e) {
+        showToast('新增失敗：' + e.message);
+    } finally {
+        $('addBtn').disabled = false;
+        $('addBtn').textContent = '新增退貨記錄';
+    }
+}
+
+// ---------- 列表 ----------
+async function loadRecords() {
+    if (!$('datePick').value) $('datePick').value = todayStr();
+    updateDayPageChrome();
+    try {
+        const res = await fetch('/api/returns?date=' + $('datePick').value);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        if (data.db_ok === false) {
+            currentRecords = [];
+            $('tCTN').textContent = $('tMID').textContent = $('tKG').textContent = '－';
+            renderList();
+            $('emptyMsg').textContent = '⚠ 資料庫未連線，無法載入退貨記錄';
+            return;
+        }
+        currentRecords = data.records;
+        $('tCTN').textContent = fmtNum(data.totals.CTN || 0);
+        const units = data.totals.units || [];
+        $('tMID').textContent = units.length
+            ? units.map(u => fmtNum(u.qty) + ' ' + u.unit).join('\n')
+            : '0';
+        $('tMID').style.fontSize = units.length > 1 ? '1.05rem' : '';
+        $('tKG').textContent = fmtNum(data.totals.KG || 0);
+        $('emptyMsg').textContent = '這一天沒有退貨記錄';
+        renderList();
+        if (detailId !== null) renderDetail();  // 詳細頁開著時同步更新
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+function qtyBadges(r) {
+    const parts = [];
+    if (r.ctn > 0) parts.push(fmtNum(r.ctn) + ' CTN');
+    if (r.pcs > 0) parts.push(fmtNum(r.pcs) + ' ' + esc(r.pcs_unit || 'PCS'));
+    if (r.kg > 0) parts.push(fmtNum(r.kg) + ' KG');
+    return parts;
+}
+function renderList() {
+    const list = $('recordList');
+    list.innerHTML = '';
+    $('emptyMsg').style.display = currentRecords.length ? 'none' : 'block';
+    for (const r of currentRecords) {
+        const div = document.createElement('div');
+        div.className = 'record';
+        const head = document.createElement('div');
+        head.className = 'rec-head';
+        const badges = qtyBadges(r).map(t => `<span class="rec-qty">${t}</span>`).join('');
+        head.innerHTML = `
+            <span class="rec-time">${r.created_at.slice(11, 16)}</span>
+            <span class="rec-content"></span>
+            ${badges}
+            <span class="rec-meta">${r.images.length ? '📷' + r.images.length : ''}</span>
+            <button class="mini-btn del" title="刪除">✕</button>`;
+        head.querySelector('.rec-content').textContent = r.content;
+        head.querySelector('.del').onclick = ev => { ev.stopPropagation(); delRecord(r); };
+        div.onclick = () => openDetail(r.id);
+        div.appendChild(head);
+        list.appendChild(div);
+    }
+}
+function fmtNum(n) {
+    return Number.isInteger(Number(n)) ? String(Number(n)) : Number(n).toFixed(2);
+}
+
+// ---------- 詳細頁 ----------
+function openDetail(id) {
+    detailId = id;
+    renderDetail();
+    $('detailOverlay').classList.add('show');
+}
+function closeDetail() {
+    detailId = null;
+    $('detailOverlay').classList.remove('show');
+}
+function renderDetail() {
+    const r = currentRecords.find(x => x.id === detailId);
+    if (!r) { closeDetail(); return; }
+    $('dContent').textContent = r.content;
+    $('dQrImg').src = `/api/returns/${r.id}/qr?v=` + encodeURIComponent(r.content);
+    $('dQrImg').onclick = () => showImage($('dQrImg').src, r.content);
+    $('eContent').value = r.content;
+    $('eCtn').value = r.ctn > 0 ? fmtNum(r.ctn) : '';
+    $('ePcs').value = r.pcs > 0 ? fmtNum(r.pcs) : '';
+    $('eUnit').value = r.pcs_unit || 'PCS';
+    $('eKg').value = r.kg > 0 ? fmtNum(r.kg) : '';
+    const ph = $('dPhotos');
+    ph.innerHTML = '';
+    $('dPhotoSec').style.display = r.images.length ? '' : 'none';
+    for (const rel of r.images) {
+        const img = document.createElement('img');
+        img.src = '/uploads/' + rel;
+        img.loading = 'lazy';
+        img.onclick = () => showImage('/uploads/' + rel, r.content);
+        ph.appendChild(img);
+    }
+}
+
+async function saveEdit() {
+    if (detailId === null) return;
+    const content = $('eContent').value.trim().toUpperCase();
+    const ctn = $('eCtn').value.trim() || '0';
+    const pcs = $('ePcs').value.trim() || '0';
+    const kg = $('eKg').value.trim() || '0';
+    const unit = $('eUnit').value.trim().toUpperCase() || 'PCS';
+    if (!content) { showToast('內容不能為空'); return; }
+    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
+        showToast('至少輸入一項數量'); return;
+    }
+    $('saveBtn').disabled = true;
+    try {
+        const res = await fetch(`/api/returns/${detailId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content, ctn, pcs, kg, pcs_unit: unit})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已儲存修改');
+        await loadRecords();
+    } catch (e) {
+        showToast('儲存失敗：' + e.message);
+    } finally {
+        $('saveBtn').disabled = false;
+    }
+}
+
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
+
+async function delRecord(r) {
+    if (!confirm(`確定刪除「${r.content}」這筆退貨記錄？照片和二維碼也會一併刪除。`)) return;
+    try {
+        const res = await fetch(`/api/returns/${r.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除');
+        if (detailId === r.id) closeDetail();
+        loadRecords();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+// ---------- 其他 ----------
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+$('rContent').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('eContent').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('eUnit').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('qUnit').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('qUnit').value = localStorage.getItem('lastUnit') || 'PCS';
+$('detailOverlay').addEventListener('click', e => {
+    if (e.target === $('detailOverlay')) closeDetail();
+});
+
+$('datePick').value = todayStr();
+// 從主頁搜尋結果跳轉：/returns?open=記錄ID&date=日期
+const _params = new URLSearchParams(location.search);
+const _openId = _params.get('open');
+const _openDate = _params.get('date');
+if (_openId && _openDate) {
+    history.replaceState(null, '', '/returns');
+    $('datePick').value = _openDate;
+    $('dayView').style.display = 'none';
+    $('dayPage').style.display = '';
+    updateDayPageChrome();
+    loadRecords().then(() => openDetail(Number(_openId)));
+} else {
+    loadDays();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+psycopg2-binary
+qrcode
+Pillow
+python-multipart

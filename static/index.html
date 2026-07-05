@@ -123,6 +123,25 @@ nav a:hover { color: var(--primary); }
     text-transform: uppercase;
 }
 .loc-input:focus { outline: none; border-color: var(--primary); }
+.stack-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+}
+.stack-row input {
+    width: 110px;
+    font-size: 1rem;
+    padding: 10px 13px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    min-width: 0;
+}
+.stack-row input:focus { outline: none; border-color: var(--primary); }
+.stack-row .x { color: var(--text-dim); font-weight: bold; }
+.stack-row .calc { color: var(--primary); font-weight: bold; font-size: 1.05rem; }
 .loc-edit-row {
     display: flex;
     gap: 8px;
@@ -141,6 +160,8 @@ nav a:hover { color: var(--primary); }
     text-transform: uppercase;
 }
 .loc-edit-row input:focus { outline: none; border-color: var(--primary); }
+.loc-edit-row { flex-wrap: wrap; }
+.loc-edit-row .stack-edit { width: 80px; max-width: 20vw; text-transform: none; }
 .btn {
     background: var(--primary);
     color: #fff;
@@ -177,6 +198,13 @@ nav a:hover { color: var(--primary); }
     font-size: .95rem;
     margin: -4px 0 10px;
     letter-spacing: 1px;
+}
+#qrStackView {
+    display: none;
+    color: var(--text-dim);
+    font-weight: bold;
+    font-size: .92rem;
+    margin: -4px 0 10px;
 }
 .result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .btn-sm {
@@ -357,6 +385,12 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <button class="btn" id="genBtn" onclick="generate()">產生二維碼</button>
         </div>
         <input id="locInput" type="text" class="loc-input" placeholder="📍 位置（選填，自動轉大寫）" autocomplete="off">
+        <div class="stack-row">
+            <input id="baseInput" type="number" min="0" step="1" placeholder="底">
+            <span class="x">×</span>
+            <input id="heightInput" type="number" min="0" step="1" placeholder="高">
+            <span id="stackCalc" class="calc"></span>
+        </div>
     </div>
 
     <div class="card" id="qrResult">
@@ -364,6 +398,7 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
         <div id="qrContent"></div>
         <div id="qrMeta"></div>
         <div id="qrLocView"></div>
+        <div id="qrStackView"></div>
         <div class="result-btns">
             <a class="btn-sm" id="downloadBtn" href="#" download>⬇ 下載圖片</a>
             <button class="btn-sm" onclick="copyContent()">📋 複製文字</button>
@@ -373,7 +408,9 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <input id="qrPhotoInput" type="file" accept="image/*" multiple style="display:none">
         </div>
         <div id="locEditRow" class="loc-edit-row" style="display:none">
-            <input id="locEditInput" type="text" placeholder="輸入位置（留空可清除）" autocomplete="off">
+            <input id="locEditInput" type="text" placeholder="位置（留空清除）" autocomplete="off">
+            <input id="baseEditInput" type="number" min="0" step="1" placeholder="底" class="stack-edit">
+            <input id="heightEditInput" type="number" min="0" step="1" placeholder="高" class="stack-edit">
             <button class="btn-sm" onclick="saveLoc()">儲存</button>
         </div>
         <div id="resultPhotos"></div>
@@ -445,7 +482,9 @@ async function generate() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 text,
-                location: $('locInput').value.trim().toUpperCase()
+                location: $('locInput').value.trim().toUpperCase(),
+                base: parseInt($('baseInput').value) || 0,
+                height: parseInt($('heightInput').value) || 0
             })
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
@@ -453,7 +492,10 @@ async function generate() {
         showResult(data, data.qr);
         if (data.db_error) showToast('已產生，但記錄失敗：' + data.db_error);
         else if (data.times > 1) showToast(`此二維碼已存在（第 ${data.times} 次產生），已顯示原有記錄`);
-        $('locInput').value = '';  // 避免殘留位置寫到下一個二維碼
+        $('locInput').value = '';  // 避免殘留寫到下一個二維碼
+        $('baseInput').value = '';
+        $('heightInput').value = '';
+        updateStackCalc();
         $('qrInput').select();
         loadRecords();
     } catch (e) {
@@ -472,6 +514,11 @@ function showResult(record, qrSrc) {
         (record.created_at ? `　${record.created_at}` : '');
     $('qrLocView').textContent = record.location ? '📍 ' + record.location : '';
     $('qrLocView').style.display = record.location ? 'block' : 'none';
+    const hasStack = record.stack_base > 0 && record.stack_height > 0;
+    $('qrStackView').textContent = hasStack
+        ? `🧱 ${record.stack_base}底 × ${record.stack_height}高 = ${record.stack_base * record.stack_height}／板`
+        : '';
+    $('qrStackView').style.display = hasStack ? 'block' : 'none';
     const dl = $('downloadBtn');
     if (record.id) {
         dl.href = `/api/records/${record.id}/qr?download=true`;
@@ -594,6 +641,8 @@ function toggleLocEdit() {
     if (row.style.display === 'none') {
         row.style.display = 'flex';
         $('locEditInput').value = currentRecord.location || '';
+        $('baseEditInput').value = currentRecord.stack_base > 0 ? currentRecord.stack_base : '';
+        $('heightEditInput').value = currentRecord.stack_height > 0 ? currentRecord.stack_height : '';
         $('locEditInput').focus();
     } else {
         row.style.display = 'none';
@@ -604,21 +653,30 @@ async function saveLoc() {
     if (!currentRecord || !currentRecord.id) return;
     const rec = currentRecord;  // 鎖定當下的記錄
     const location = $('locEditInput').value.trim().toUpperCase();
+    const base = parseInt($('baseEditInput').value) || 0;
+    const height = parseInt($('heightEditInput').value) || 0;
     try {
         const res = await fetch(`/api/records/${rec.id}/location`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({location})
+            body: JSON.stringify({location, base, height})
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         const data = await res.json();
         rec.location = data.location;
+        rec.stack_base = data.base;
+        rec.stack_height = data.height;
         if (rec === currentRecord) {
             $('qrLocView').textContent = rec.location ? '📍 ' + rec.location : '';
             $('qrLocView').style.display = rec.location ? 'block' : 'none';
+            const hasStack = rec.stack_base > 0 && rec.stack_height > 0;
+            $('qrStackView').textContent = hasStack
+                ? `🧱 ${rec.stack_base}底 × ${rec.stack_height}高 = ${rec.stack_base * rec.stack_height}／板`
+                : '';
+            $('qrStackView').style.display = hasStack ? 'block' : 'none';
             $('locEditRow').style.display = 'none';
         }
-        showToast(location ? '已更新位置：' + location : '已清除位置');
+        showToast('已儲存');
         loadRecords();
     } catch (e) {
         showToast('儲存失敗：' + e.message);
@@ -713,12 +771,14 @@ function renderRecords() {
             <td class="time-col">${r.created_at}</td>
             <td><button class="del-btn" title="刪除">✕</button></td>`;
         tr.querySelector('.content-cell').textContent = r.content;
-        if (r.is_favorite || (r.images && r.images.length) || r.location) {
+        const hasStack = r.stack_base > 0 && r.stack_height > 0;
+        if (r.is_favorite || (r.images && r.images.length) || r.location || hasStack) {
             const meta = document.createElement('span');
             meta.className = 'row-meta';
             meta.textContent = (r.is_favorite ? ' ⭐' : '') +
                 (r.images && r.images.length ? ' 📷' + r.images.length : '') +
-                (r.location ? ' 📍' + r.location : '');
+                (r.location ? ' 📍' + r.location : '') +
+                (hasStack ? ` 🧱${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}` : '');
             tr.querySelector('.content-cell').appendChild(meta);
         }
         tr.onclick = () => openRecord(r);
@@ -810,6 +870,15 @@ $('locInput').addEventListener('input', e => {
     e.target.setSelectionRange(pos, pos);
 });
 $('locInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+function updateStackCalc() {
+    const b = parseInt($('baseInput').value) || 0;
+    const h = parseInt($('heightInput').value) || 0;
+    $('stackCalc').textContent = (b > 0 && h > 0) ? `= ${b * h}／板` : '';
+}
+$('baseInput').addEventListener('input', updateStackCalc);
+$('heightInput').addEventListener('input', updateStackCalc);
+$('baseInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+$('heightInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 $('locEditInput').addEventListener('input', e => {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();

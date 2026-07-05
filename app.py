@@ -112,6 +112,8 @@ def init_db():
                     times INTEGER NOT NULL DEFAULT 1,
                     is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
                     location TEXT NOT NULL DEFAULT '',
+                    stack_base INTEGER NOT NULL DEFAULT 0,
+                    stack_height INTEGER NOT NULL DEFAULT 0,
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
                 """
@@ -130,6 +132,12 @@ def init_db():
                 cur.execute(
                     "ALTER TABLE qr_records "
                     "ADD COLUMN location TEXT NOT NULL DEFAULT ''"
+                )
+            if qr_cols and "stack_base" not in qr_cols:  # 堆疊：底 × 高
+                cur.execute(
+                    "ALTER TABLE qr_records "
+                    "ADD COLUMN stack_base INTEGER NOT NULL DEFAULT 0, "
+                    "ADD COLUMN stack_height INTEGER NOT NULL DEFAULT 0"
                 )
             cur.execute(
                 """
@@ -398,6 +406,14 @@ async def pin_guard(request: Request, call_next):
 class GenerateBody(BaseModel):
     text: str
     location: str = ""
+    base: int = 0
+    height: int = 0
+
+
+def _clamp_stack(v: int, name: str) -> int:
+    if not (0 <= v <= 99999):
+        raise HTTPException(400, f"{name} 數值超出範圍")
+    return v
 
 
 class LoginBody(BaseModel):
@@ -481,10 +497,13 @@ def generate(body: GenerateBody):
         raise HTTPException(400, "內容不能為空")
 
     loc = body.location.strip().upper()[:50]
+    base = _clamp_stack(body.base, "底")
+    height = _clamp_stack(body.height, "高")
     png = make_qr_png(content)
     record = {
         "id": None, "content": content, "times": None, "created_at": None,
-        "is_favorite": False, "location": loc, "images": [],
+        "is_favorite": False, "location": loc,
+        "stack_base": base, "stack_height": height, "images": [],
     }
 
     if DB_ERROR is None:
@@ -494,15 +513,23 @@ def generate(body: GenerateBody):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO qr_records (content, location) VALUES (%s, %s)
+                    INSERT INTO qr_records (content, location, stack_base, stack_height)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (content) DO UPDATE
                         SET created_at = NOW(), times = qr_records.times + 1,
                             location = CASE WHEN EXCLUDED.location <> ''
                                 THEN EXCLUDED.location
-                                ELSE qr_records.location END
-                    RETURNING id, content, times, created_at, is_favorite, location
+                                ELSE qr_records.location END,
+                            stack_base = CASE WHEN EXCLUDED.stack_base > 0
+                                THEN EXCLUDED.stack_base
+                                ELSE qr_records.stack_base END,
+                            stack_height = CASE WHEN EXCLUDED.stack_height > 0
+                                THEN EXCLUDED.stack_height
+                                ELSE qr_records.stack_height END
+                    RETURNING id, content, times, created_at, is_favorite,
+                              location, stack_base, stack_height
                     """,
-                    (content, loc),
+                    (content, loc, base, height),
                 )
                 row = cur.fetchone()
                 cur.execute(
@@ -517,6 +544,8 @@ def generate(body: GenerateBody):
                     "created_at": row[3].strftime("%Y-%m-%d %H:%M:%S"),
                     "is_favorite": row[4],
                     "location": row[5],
+                    "stack_base": row[6],
+                    "stack_height": row[7],
                     "images": imgs,
                 }
             conn.close()
@@ -529,6 +558,7 @@ def generate(body: GenerateBody):
 
 QR_SELECT = """
     SELECT id, content, times, created_at, is_favorite, location,
+           stack_base, stack_height,
            COALESCE(
                (SELECT array_agg(i.filename ORDER BY i.id)
                 FROM qr_images i WHERE i.record_id = qr_records.id),
@@ -562,7 +592,9 @@ def _qr_row_dict(r):
         "created_at": r[3].strftime("%Y-%m-%d %H:%M:%S"),
         "is_favorite": r[4],
         "location": r[5],
-        "images": list(r[6]),
+        "stack_base": r[6],
+        "stack_height": r[7],
+        "images": list(r[8]),
     }
 
 
@@ -629,26 +661,31 @@ class FavBody(BaseModel):
 
 class LocBody(BaseModel):
     location: str = ""
+    base: int = 0
+    height: int = 0
 
 
 @app.post("/api/records/{record_id}/location")
 def set_location(record_id: int, body: LocBody):
-    """事後補加／修改二維碼的位置（留空即清除）"""
+    """事後補加／修改二維碼的位置與堆疊（留空／0 即清除）"""
     if DB_ERROR is not None:
         raise HTTPException(503, "資料庫未連線")
     loc = body.location.strip().upper()[:50]
+    base = _clamp_stack(body.base, "底")
+    height = _clamp_stack(body.height, "高")
     conn = get_conn()
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE qr_records SET location = %s WHERE id = %s",
-            (loc, record_id),
+            "UPDATE qr_records SET location = %s, stack_base = %s, "
+            "stack_height = %s WHERE id = %s",
+            (loc, base, height, record_id),
         )
         updated = cur.rowcount
     conn.close()
     if not updated:
         raise HTTPException(404, "找不到記錄")
-    return {"ok": True, "location": loc}
+    return {"ok": True, "location": loc, "base": base, "height": height}
 
 
 @app.post("/api/records/{record_id}/favorite")

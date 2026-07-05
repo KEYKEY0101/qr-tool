@@ -227,10 +227,15 @@ async function loadFavs() {
             txt.className = 'txt';
             txt.textContent = r.content;
             let locEl = null;
-            if (r.location) {
+            const locParts = [];
+            if (r.location) locParts.push('📍 ' + r.location);
+            if (r.stack_base > 0 && r.stack_height > 0) {
+                locParts.push(`🧱 ${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}`);
+            }
+            if (locParts.length) {
                 locEl = document.createElement('div');
                 locEl.className = 'loc';
-                locEl.textContent = '📍 ' + r.location;
+                locEl.textContent = locParts.join('　');
             }
             const un = document.createElement('button');
             un.className = 'unfav';

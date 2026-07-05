@@ -1258,6 +1258,7 @@ def delete_return(record_id: int):
 
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
 @app.get("/api/urlqr")

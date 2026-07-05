@@ -627,6 +627,30 @@ class FavBody(BaseModel):
     on: bool
 
 
+class LocBody(BaseModel):
+    location: str = ""
+
+
+@app.post("/api/records/{record_id}/location")
+def set_location(record_id: int, body: LocBody):
+    """事後補加／修改二維碼的位置（留空即清除）"""
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    loc = body.location.strip().upper()[:50]
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE qr_records SET location = %s WHERE id = %s",
+            (loc, record_id),
+        )
+        updated = cur.rowcount
+    conn.close()
+    if not updated:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True, "location": loc}
+
+
 @app.post("/api/records/{record_id}/favorite")
 def set_favorite(record_id: int, body: FavBody):
     if DB_ERROR is not None:

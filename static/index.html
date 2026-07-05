@@ -123,6 +123,24 @@ nav a:hover { color: var(--primary); }
     text-transform: uppercase;
 }
 .loc-input:focus { outline: none; border-color: var(--primary); }
+.loc-edit-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+}
+.loc-edit-row input {
+    width: 240px;
+    max-width: 60vw;
+    font-size: 1rem;
+    padding: 9px 12px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-transform: uppercase;
+}
+.loc-edit-row input:focus { outline: none; border-color: var(--primary); }
 .btn {
     background: var(--primary);
     color: #fff;
@@ -351,7 +369,12 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <button class="btn-sm" onclick="copyContent()">📋 複製文字</button>
             <button class="btn-sm" id="favBtn" onclick="toggleFav()" style="display:none">☆ 加入常用</button>
             <button class="btn-sm" id="photoBtn" onclick="$('qrPhotoInput').click()" style="display:none">📷 貨物相片</button>
+            <button class="btn-sm" id="locBtn" onclick="toggleLocEdit()" style="display:none">📍 位置</button>
             <input id="qrPhotoInput" type="file" accept="image/*" multiple style="display:none">
+        </div>
+        <div id="locEditRow" class="loc-edit-row" style="display:none">
+            <input id="locEditInput" type="text" placeholder="輸入位置（留空可清除）" autocomplete="off">
+            <button class="btn-sm" onclick="saveLoc()">儲存</button>
         </div>
         <div id="resultPhotos"></div>
     </div>
@@ -455,13 +478,16 @@ function showResult(record, qrSrc) {
         dl.removeAttribute('download');
         $('favBtn').style.display = '';
         $('photoBtn').style.display = '';
+        $('locBtn').style.display = '';
         updateFavBtn();
     } else {
         dl.href = qrSrc;
         dl.setAttribute('download', record.content + '.png');
         $('favBtn').style.display = 'none';
         $('photoBtn').style.display = 'none';
+        $('locBtn').style.display = 'none';
     }
+    $('locEditRow').style.display = 'none';
     renderResultPhotos();
     $('qrResult').scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
@@ -559,6 +585,44 @@ function showImage(src, cap) {
     $('overlayImg').src = src;
     $('overlayCap').textContent = cap;
     $('overlay').classList.add('show');
+}
+
+// ---------- 事後補加位置 ----------
+function toggleLocEdit() {
+    if (!currentRecord || !currentRecord.id) return;
+    const row = $('locEditRow');
+    if (row.style.display === 'none') {
+        row.style.display = 'flex';
+        $('locEditInput').value = currentRecord.location || '';
+        $('locEditInput').focus();
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+async function saveLoc() {
+    if (!currentRecord || !currentRecord.id) return;
+    const rec = currentRecord;  // 鎖定當下的記錄
+    const location = $('locEditInput').value.trim().toUpperCase();
+    try {
+        const res = await fetch(`/api/records/${rec.id}/location`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({location})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const data = await res.json();
+        rec.location = data.location;
+        if (rec === currentRecord) {
+            $('qrLocView').textContent = rec.location ? '📍 ' + rec.location : '';
+            $('qrLocView').style.display = rec.location ? 'block' : 'none';
+            $('locEditRow').style.display = 'none';
+        }
+        showToast(location ? '已更新位置：' + location : '已清除位置');
+        loadRecords();
+    } catch (e) {
+        showToast('儲存失敗：' + e.message);
+    }
 }
 
 function copyContent() {
@@ -746,6 +810,12 @@ $('locInput').addEventListener('input', e => {
     e.target.setSelectionRange(pos, pos);
 });
 $('locInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+$('locEditInput').addEventListener('input', e => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+});
+$('locEditInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveLoc(); });
 let searchTimer;
 $('searchInput').addEventListener('input', () => {
     clearTimeout(searchTimer);

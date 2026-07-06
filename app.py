@@ -1318,4 +1318,4 @@ if __name__ == "__main__":
         print("  請編輯 config.json 填入正確的資料庫密碼")
     print("=" * 46)
     threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{PORT}/")).start()
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")

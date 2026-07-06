@@ -500,6 +500,7 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
 
 <div id="toast"></div>
 
+<script src="/static/photo-compress.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 let currentRecords = [];
@@ -625,11 +626,13 @@ async function toggleFav() {
 $('qrPhotoInput').addEventListener('change', async e => {
     if (!currentRecord || !currentRecord.id || !e.target.files.length) return;
     const rec = currentRecord;  // 鎖定當下的記錄
-    const n = e.target.files.length;
-    const fd = new FormData();
-    for (const f of e.target.files) fd.append('files', f);
+    const picked = [...e.target.files];
     e.target.value = '';
-    showToast(`已選 ${n} 張相片，上傳中…`);
+    showToast(`已選 ${picked.length} 張相片，壓縮中…`);
+    const files = await compressPhotos(picked);
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+    showToast(`上傳中…`);
     try {
         const res = await fetch(`/api/records/${rec.id}/images`, {
             method: 'POST',

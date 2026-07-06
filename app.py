@@ -1317,5 +1317,6 @@ if __name__ == "__main__":
         print(f"  [警告] 資料庫未連線: {DB_ERROR.strip()}")
         print("  請編輯 config.json 填入正確的資料庫密碼")
     print("=" * 46)
-    threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{PORT}/")).start()
+    if os.environ.get("QR_NO_BROWSER") != "1":  # 啟動器/開機自啟時不自動開瀏覽器
+        threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{PORT}/")).start()
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")

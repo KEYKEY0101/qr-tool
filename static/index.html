@@ -551,7 +551,8 @@ async function generate() {
         $('heightInput').value = '';
         $('typeLoc').checked = false;
         updateStackCalc();
-        $('qrInput').select();
+        $('qrInput').value = '';
+        $('qrInput').focus();
         loadRecords();
     } catch (e) {
         showToast('產生失敗：' + e.message);

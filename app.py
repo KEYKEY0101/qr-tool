@@ -20,6 +20,12 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()  # 支援 iPhone HEIC 照片
+except ImportError:
+    pass
+
 BASE_DIR = Path(__file__).parent
 CONFIG = json.loads((BASE_DIR / "config.json").read_text(encoding="utf-8"))
 DB = CONFIG["db"]
@@ -481,9 +487,12 @@ def unlock_remote(request: Request):
     return {"ok": True}
 
 
+NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
+
 @app.get("/")
 def index():
-    return FileResponse(BASE_DIR / "static" / "index.html")
+    return FileResponse(BASE_DIR / "static" / "index.html", headers=NO_CACHE)
 
 
 @app.get("/api/status")
@@ -870,12 +879,12 @@ def _save_upload(prefix: str, index: int, upload: UploadFile) -> str:
 
 @app.get("/returns")
 def returns_page():
-    return FileResponse(BASE_DIR / "static" / "returns.html")
+    return FileResponse(BASE_DIR / "static" / "returns.html", headers=NO_CACHE)
 
 
 @app.get("/favorites")
 def favorites_page():
-    return FileResponse(BASE_DIR / "static" / "favorites.html")
+    return FileResponse(BASE_DIR / "static" / "favorites.html", headers=NO_CACHE)
 
 
 @app.post("/api/returns")

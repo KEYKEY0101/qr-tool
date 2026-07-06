@@ -3,4 +3,5 @@ uvicorn
 psycopg2-binary
 qrcode
 Pillow
+pillow-heif
 python-multipart

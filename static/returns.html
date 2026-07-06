@@ -763,11 +763,12 @@ function renderDayPhotos(imgs) {
 
 $('dayFiles').addEventListener('change', async e => {
     if (!e.target.files.length) return;
+    const n = e.target.files.length;
     const fd = new FormData();
     fd.append('date', $('datePick').value);
     for (const f of e.target.files) fd.append('files', f);
     e.target.value = '';
-    showToast('相片上傳中…');
+    showToast(`已選 ${n} 張相片，上傳中…`);
     try {
         const res = await fetch('/api/returns/dayimages', {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
@@ -878,10 +879,11 @@ function renderDetail() {
 $('dPhotoFiles').addEventListener('change', async e => {
     if (detailId === null || !e.target.files.length) return;
     const id = detailId;  // 鎖定當下的記錄
+    const n = e.target.files.length;
     const fd = new FormData();
     for (const f of e.target.files) fd.append('files', f);
     e.target.value = '';
-    showToast('照片上傳中…');
+    showToast(`已選 ${n} 張照片，上傳中…`);
     try {
         const res = await fetch(`/api/returns/${id}/images`, {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);

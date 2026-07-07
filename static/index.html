@@ -935,16 +935,8 @@ function showToast(msg) {
 }
 
 $('qrInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
-$('qrInput').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('locInput').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
+bindUppercase($('qrInput'));
+bindUppercase($('locInput'));
 $('locInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 function updateStackCalc() {
     const b = parseInt($('baseInput').value) || 0;
@@ -955,11 +947,7 @@ $('baseInput').addEventListener('input', updateStackCalc);
 $('heightInput').addEventListener('input', updateStackCalc);
 $('baseInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
 $('heightInput').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
-$('locEditInput').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
+bindUppercase($('locEditInput'));
 $('locEditInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveLoc(); });
 let searchTimer;
 $('searchInput').addEventListener('input', () => {

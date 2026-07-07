@@ -1035,36 +1035,12 @@ function showToast(msg) {
     clearTimeout(t._timer);
     t._timer = setTimeout(() => t.classList.remove('show'), 2500);
 }
-$('rContent').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('eContent').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('eUnit').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('rLoc').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('eLoc').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
-$('qUnit').addEventListener('input', e => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-});
+bindUppercase($('rContent'));
+bindUppercase($('eContent'));
+bindUppercase($('eUnit'));
+bindUppercase($('rLoc'));
+bindUppercase($('eLoc'));
+bindUppercase($('qUnit'));
 $('qUnit').value = localStorage.getItem('lastUnit') || 'PCS';
 $('detailOverlay').addEventListener('click', e => {
     if (e.target === $('detailOverlay')) closeDetail();

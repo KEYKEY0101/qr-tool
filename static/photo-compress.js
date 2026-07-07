@@ -33,6 +33,21 @@ async function compressPhotos(fileList) {
     return out;
 }
 
+// ---------- 自動轉大寫（支援中文輸入法：速成/倉頡組字中不干擾） ----------
+function bindUppercase(el) {
+    const apply = () => {
+        if (el.value === el.value.toUpperCase()) return;
+        const pos = el.selectionStart;
+        el.value = el.value.toUpperCase();
+        try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ }
+    };
+    el.addEventListener('input', e => {
+        if (e.isComposing) return;  // 輸入法組字中，千萬不要動欄位
+        apply();
+    });
+    el.addEventListener('compositionend', apply);  // 選完字才轉大寫
+}
+
 // ---------- 前端診斷回報（寫進伺服器日誌） ----------
 function clientLog(msg) {
     try {

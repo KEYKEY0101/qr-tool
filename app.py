@@ -843,6 +843,21 @@ def delete_record(record_id: int):
     return {"ok": True}
 
 
+def _sync_qr_record(cur, content: str, location: str):
+    """退貨記錄的二維碼同步到主頁歷史記錄（位置以最新為準，未填則保留原位置）"""
+    cur.execute(
+        """
+        INSERT INTO qr_records (content, location) VALUES (%s, %s)
+        ON CONFLICT (content) DO UPDATE
+            SET created_at = NOW(), times = qr_records.times + 1,
+                location = CASE WHEN EXCLUDED.location <> ''
+                    THEN EXCLUDED.location
+                    ELSE qr_records.location END
+        """,
+        (content, location),
+    )
+
+
 def _parse_qty(value: str, name: str) -> float:
     value = (value or "").strip()
     if not value:
@@ -924,6 +939,7 @@ def create_return(
                 (content, q_ctn, q_pcs, unit_label, q_kg, has_rt, loc),
             )
             rid, created = cur.fetchone()
+            _sync_qr_record(cur, content, loc)  # 同步到主頁歷史記錄
             for i, f in enumerate(files):
                 if not f.filename:
                     continue
@@ -1164,6 +1180,8 @@ def update_return(record_id: int, body: ReturnUpdate):
             (content, q_ctn, q_pcs, unit_label, q_kg, body.rt, loc, record_id),
         )
         updated = cur.rowcount
+        if updated:
+            _sync_qr_record(cur, content, loc)  # 同步到主頁歷史（位置以最新為準）
     conn.close()
     if not updated:
         raise HTTPException(404, "找不到記錄")

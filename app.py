@@ -985,18 +985,14 @@ def list_routes(q: str = ""):
     conn = get_conn()
     with conn.cursor() as cur:
         if q:
+            # 只搜尋名稱左邊的號碼（「002 ↔ 68」只匹配 002 那邊）
             cur.execute(
                 ROUTE_SELECT + """
-                WHERE r.name ILIKE %s OR r.content ILIKE %s
-                   OR r.name ILIKE %s OR r.content ILIKE %s
-                ORDER BY (r.name ILIKE %s OR r.content ILIKE %s) DESC, r.name
+                WHERE split_part(r.name, '↔', 1) ILIKE %s
+                ORDER BY (split_part(r.name, '↔', 1) ILIKE %s) DESC, r.name
                 LIMIT 200
                 """,
-                (
-                    _like_pattern(q), _like_pattern(q),
-                    _fuzzy_pattern(q), _fuzzy_pattern(q),
-                    _like_pattern(q), _like_pattern(q),
-                ),
+                (_like_pattern(q), q.upper() + "%"),
             )
         else:
             cur.execute(ROUTE_SELECT + " ORDER BY r.name LIMIT 200")

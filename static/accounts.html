@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帳號密碼二維碼</title>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --hover-row: #eff6ff;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+[data-theme="dark"] {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --danger: #f87171;
+    --border: #374151;
+    --input-bg: #111827;
+    --hover-row: #1e3a5f;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+nav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+nav a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: .95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+nav a.active { color: var(--primary); background: var(--hover-row); font-weight: bold; }
+nav a:hover { color: var(--primary); }
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: .85rem;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+}
+.card h2 { font-size: 1.05rem; margin-bottom: 14px; }
+.form-grid { display: grid; gap: 10px; }
+.form-grid input {
+    width: 100%;
+    font-size: 1.05rem;
+    padding: 11px 13px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+}
+.form-grid input:focus { outline: none; border-color: var(--primary); }
+.btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 26px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    width: 100%;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.acc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.acc-row:hover { background: var(--hover-row); }
+.acc-row:last-child { border-bottom: none; }
+.acc-label { color: var(--text-dim); font-size: .85rem; white-space: nowrap; min-width: 70px; }
+.acc-user { font-weight: bold; letter-spacing: 1px; word-break: break-all; flex: 1; min-width: 120px; }
+.acc-hint { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
+.mini-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--danger);
+    cursor: pointer;
+    padding: 5px 9px;
+    font-size: .9rem;
+}
+.mini-btn:hover { border-color: var(--danger); }
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 24px; display: none; }
+
+/* 詳細彈窗：兩個二維碼並排 */
+.detail-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 40;
+    overflow-y: auto;
+    padding: 20px 12px 40px;
+}
+.detail-overlay.show { display: block; }
+.detail-panel {
+    max-width: 640px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+}
+.detail-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.detail-top h2 { font-size: 1.1rem; flex: 1; word-break: break-all; }
+.qr-pair { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.qr-box {
+    flex: 1 1 200px;
+    max-width: 260px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+}
+.qr-box .tag { font-weight: bold; color: var(--primary); margin-bottom: 8px; }
+.qr-box img { width: 100%; background: #fff; border-radius: 8px; padding: 4px; cursor: pointer; }
+.qr-box .val {
+    margin-top: 8px;
+    font-family: Consolas, monospace;
+    font-size: .9rem;
+    word-break: break-all;
+    color: var(--text-dim);
+}
+.edit-sec { margin-top: 18px; }
+.edit-sec h3 { font-size: .95rem; color: var(--text-dim); margin-bottom: 10px; }
+.edit-sec input {
+    width: 100%;
+    font-size: 1rem;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.edit-sec input:focus { outline: none; border-color: var(--primary); }
+.edit-btns { display: flex; gap: 10px; margin-top: 4px; }
+.edit-btns .btn { margin: 0; }
+.btn-del {
+    background: none;
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 60;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 20px;
+}
+.overlay.show { display: flex; }
+.overlay img { max-width: 92vw; max-height: 78vh; border-radius: 10px; background: #fff; }
+.overlay .cap { color: #fff; font-size: 1.05rem; font-weight: bold; word-break: break-all; text-align: center; }
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 10px; font-size: .9rem;
+    opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 90vw;
+    z-index: 99;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/">📦 二維碼生成器</a>
+        <a href="/favorites">⭐ 常用二維碼</a>
+        <a href="/returns">↩️ 退貨記錄</a>
+        <a href="/accounts" class="active">🔑 帳號密碼</a>
+    </nav>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h2>➕ 新增帳號</h2>
+        <div class="form-grid">
+            <input id="aLabel" type="text" placeholder="名稱／用途（選填，例如：倉庫系統）" autocomplete="off">
+            <input id="aUser" type="text" placeholder="帳號（不會轉大寫）" autocomplete="off">
+            <input id="aPass" type="text" placeholder="密碼（不會轉大寫）" autocomplete="off">
+        </div>
+        <button class="btn" id="addBtn" onclick="addAccount()" style="margin-top:12px">新增</button>
+    </div>
+
+    <div class="card">
+        <h2>🔑 帳號列表（點擊顯示帳號＋密碼二維碼）</h2>
+        <div id="accList"></div>
+        <div id="emptyMsg">尚無帳號記錄</div>
+    </div>
+</div>
+
+<!-- 詳細：兩個二維碼 + 修改 -->
+<div class="detail-overlay" id="detailOverlay">
+    <div class="detail-panel">
+        <div class="detail-top">
+            <h2 id="dTitle"></h2>
+            <button class="icon-btn" onclick="closeDetail()">✕ 關閉</button>
+        </div>
+        <div class="qr-pair">
+            <div class="qr-box">
+                <div class="tag">👤 帳號</div>
+                <img id="qrUser" alt="帳號二維碼">
+                <div class="val" id="valUser"></div>
+            </div>
+            <div class="qr-box">
+                <div class="tag">🔒 密碼</div>
+                <img id="qrPass" alt="密碼二維碼">
+                <div class="val" id="valPass"></div>
+            </div>
+        </div>
+        <div class="edit-sec">
+            <h3>✏️ 修改（打錯可更正）</h3>
+            <input id="eLabel" type="text" placeholder="名稱／用途（選填）" autocomplete="off">
+            <input id="eUser" type="text" placeholder="帳號" autocomplete="off">
+            <input id="ePass" type="text" placeholder="密碼" autocomplete="off">
+            <div class="edit-btns">
+                <button class="btn" onclick="saveEdit()">💾 儲存修改</button>
+                <button class="btn-del" onclick="delAccount()">🗑 刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+    <img id="overlayImg" src="" alt="">
+    <div class="cap" id="overlayCap"></div>
+</div>
+<div id="toast"></div>
+
+<script src="/static/photo-compress.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let accounts = [];
+let detailId = null;
+
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'dark' ? '☀️ 淺色' : '🌙 深色';
+    localStorage.setItem('appTheme', t);
+}
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('appTheme') || 'light');
+
+async function loadAccounts() {
+    try {
+        const res = await fetch('/api/accounts');
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.accounts)) return;
+        if (data.db_ok === false) {
+            $('emptyMsg').textContent = '⚠ 資料庫未連線';
+            $('emptyMsg').style.display = 'block';
+            return;
+        }
+        accounts = data.accounts;
+        const list = $('accList');
+        list.innerHTML = '';
+        $('emptyMsg').style.display = accounts.length ? 'none' : 'block';
+        for (const a of accounts) {
+            const row = document.createElement('div');
+            row.className = 'acc-row';
+            const label = document.createElement('span');
+            label.className = 'acc-label';
+            label.textContent = a.label || '—';
+            const user = document.createElement('span');
+            user.className = 'acc-user';
+            user.textContent = a.username;
+            const hint = document.createElement('span');
+            hint.className = 'acc-hint';
+            hint.textContent = '📱×2';
+            const del = document.createElement('button');
+            del.className = 'mini-btn';
+            del.textContent = '✕';
+            del.title = '刪除';
+            del.onclick = ev => { ev.stopPropagation(); quickDelete(a); };
+            row.appendChild(label);
+            row.appendChild(user);
+            row.appendChild(hint);
+            row.appendChild(del);
+            row.onclick = () => openDetail(a.id);
+            list.appendChild(row);
+        }
+        if (detailId !== null) renderDetail();
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+
+async function addAccount() {
+    const label = $('aLabel').value.trim();
+    const username = $('aUser').value.trim();
+    const password = $('aPass').value.trim();
+    if (!username || !password) { showToast('帳號和密碼不能為空'); return; }
+    $('addBtn').disabled = true;
+    try {
+        const res = await fetch('/api/accounts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({label, username, password})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已新增');
+        $('aLabel').value = ''; $('aUser').value = ''; $('aPass').value = '';
+        loadAccounts();
+    } catch (e) {
+        showToast('新增失敗：' + e.message);
+    } finally {
+        $('addBtn').disabled = false;
+    }
+}
+
+function openDetail(id) {
+    detailId = id;
+    renderDetail();
+    $('detailOverlay').classList.add('show');
+}
+function closeDetail() {
+    detailId = null;
+    $('detailOverlay').classList.remove('show');
+}
+function renderDetail() {
+    const a = accounts.find(x => x.id === detailId);
+    if (!a) { closeDetail(); return; }
+    $('dTitle').textContent = a.label || a.username;
+    $('qrUser').src = `/api/accounts/${a.id}/qr?field=username&v=` + encodeURIComponent(a.username);
+    $('qrPass').src = `/api/accounts/${a.id}/qr?field=password&v=` + encodeURIComponent(a.password);
+    $('qrUser').onclick = () => showImage($('qrUser').src, '帳號：' + a.username);
+    $('qrPass').onclick = () => showImage($('qrPass').src, '密碼二維碼');
+    $('valUser').textContent = a.username;
+    $('valPass').textContent = a.password;
+    $('eLabel').value = a.label || '';
+    $('eUser').value = a.username;
+    $('ePass').value = a.password;
+}
+
+async function saveEdit() {
+    if (detailId === null) return;
+    const label = $('eLabel').value.trim();
+    const username = $('eUser').value.trim();
+    const password = $('ePass').value.trim();
+    if (!username || !password) { showToast('帳號和密碼不能為空'); return; }
+    try {
+        const res = await fetch(`/api/accounts/${detailId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({label, username, password})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已儲存修改');
+        closeDetail();
+        loadAccounts();
+    } catch (e) {
+        showToast('儲存失敗：' + e.message);
+    }
+}
+
+async function delAccount() {
+    if (detailId === null) return;
+    const a = accounts.find(x => x.id === detailId);
+    if (!confirm(`確定刪除「${a ? (a.label || a.username) : ''}」？`)) return;
+    try {
+        const res = await fetch(`/api/accounts/${detailId}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除');
+        closeDetail();
+        loadAccounts();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+async function quickDelete(a) {
+    if (!confirm(`確定刪除「${a.label || a.username}」？`)) return;
+    try {
+        const res = await fetch(`/api/accounts/${a.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除');
+        if (detailId === a.id) closeDetail();
+        loadAccounts();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
+
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+$('detailOverlay').addEventListener('click', e => {
+    if (e.target === $('detailOverlay')) closeDetail();
+});
+$('aPass').addEventListener('keydown', e => { if (e.key === 'Enter') addAccount(); });
+
+loadAccounts();
+</script>
+<script src="/static/pull-refresh.js"></script>
+</body>
+</html>

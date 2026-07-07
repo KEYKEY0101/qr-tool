@@ -236,6 +236,17 @@ def init_db():
                 )
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS account_records (
+                    id SERIAL PRIMARY KEY,
+                    label TEXT NOT NULL DEFAULT '',
+                    username TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         conn.close()
         DB_ERROR = None
     except Exception as e:
@@ -912,6 +923,125 @@ def returns_page():
 @app.get("/favorites")
 def favorites_page():
     return FileResponse(BASE_DIR / "static" / "favorites.html", headers=NO_CACHE)
+
+
+@app.get("/accounts")
+def accounts_page():
+    return FileResponse(BASE_DIR / "static" / "accounts.html", headers=NO_CACHE)
+
+
+# ---------- 帳號密碼二維碼（獨立功能，不進主頁歷史） ----------
+class AccountBody(BaseModel):
+    label: str = ""
+    username: str
+    password: str
+
+
+def _clean_account(body: AccountBody):
+    label = body.label.strip()[:50]
+    username = body.username.strip()  # 帳號密碼不轉大寫（有大小寫之分）
+    password = body.password.strip()
+    if not username or not password:
+        raise HTTPException(400, "帳號和密碼不能為空")
+    return label, username, password
+
+
+@app.get("/api/accounts")
+def list_accounts():
+    if DB_ERROR is not None:
+        return {"db_ok": False, "accounts": []}
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, label, username, password, created_at "
+            "FROM account_records ORDER BY id"
+        )
+        rows = cur.fetchall()
+    conn.close()
+    return {
+        "db_ok": True,
+        "accounts": [
+            {
+                "id": r[0],
+                "label": r[1],
+                "username": r[2],
+                "password": r[3],
+                "created_at": r[4].strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.post("/api/accounts")
+def create_account(body: AccountBody):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    label, username, password = _clean_account(body)
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO account_records (label, username, password) "
+            "VALUES (%s, %s, %s) RETURNING id",
+            (label, username, password),
+        )
+        aid = cur.fetchone()[0]
+    conn.close()
+    return {"id": aid, "label": label, "username": username, "password": password}
+
+
+@app.put("/api/accounts/{account_id}")
+def update_account(account_id: int, body: AccountBody):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    label, username, password = _clean_account(body)
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE account_records SET label = %s, username = %s, "
+            "password = %s WHERE id = %s",
+            (label, username, password, account_id),
+        )
+        updated = cur.rowcount
+    conn.close()
+    if not updated:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True}
+
+
+@app.delete("/api/accounts/{account_id}")
+def delete_account(account_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM account_records WHERE id = %s", (account_id,))
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True}
+
+
+@app.get("/api/accounts/{account_id}/qr")
+def account_qr(account_id: int, field: str = "username"):
+    if field not in ("username", "password"):
+        raise HTTPException(400, "field 必須是 username 或 password")
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT {field} FROM account_records WHERE id = %s", (account_id,)
+        )
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "找不到記錄")
+    return Response(make_qr_png(row[0]), media_type="image/png")
 
 
 @app.post("/api/returns")

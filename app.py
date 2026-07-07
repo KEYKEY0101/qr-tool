@@ -247,6 +247,27 @@ def init_db():
                 )
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS route_records (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    content TEXT NOT NULL DEFAULT '',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS route_images (
+                    id SERIAL PRIMARY KEY,
+                    record_id INTEGER NOT NULL
+                        REFERENCES route_records(id) ON DELETE CASCADE,
+                    filename TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         conn.close()
         DB_ERROR = None
     except Exception as e:
@@ -928,6 +949,211 @@ def favorites_page():
 @app.get("/accounts")
 def accounts_page():
     return FileResponse(BASE_DIR / "static" / "accounts.html", headers=NO_CACHE)
+
+
+@app.get("/routes")
+def routes_page():
+    return FileResponse(BASE_DIR / "static" / "routes.html", headers=NO_CACHE)
+
+
+# ---------- 車線速查（純查找，不生成二維碼、不進主頁歷史） ----------
+ROUTE_SELECT = """
+    SELECT r.id, r.name, r.content, r.created_at,
+           COALESCE(
+               (SELECT array_agg(i.filename ORDER BY i.id)
+                FROM route_images i WHERE i.record_id = r.id),
+               '{}'
+           )
+    FROM route_records r
+"""
+
+
+def _route_row(r):
+    return {
+        "id": r[0],
+        "name": r[1],
+        "content": r[2],
+        "created_at": r[3].strftime("%Y-%m-%d %H:%M:%S"),
+        "images": list(r[4]),
+    }
+
+
+@app.get("/api/routes")
+def list_routes(q: str = ""):
+    if DB_ERROR is not None:
+        return {"db_ok": False, "routes": []}
+    conn = get_conn()
+    with conn.cursor() as cur:
+        if q:
+            cur.execute(
+                ROUTE_SELECT + """
+                WHERE r.name ILIKE %s OR r.content ILIKE %s
+                   OR r.name ILIKE %s OR r.content ILIKE %s
+                ORDER BY (r.name ILIKE %s OR r.content ILIKE %s) DESC, r.name
+                LIMIT 200
+                """,
+                (
+                    _like_pattern(q), _like_pattern(q),
+                    _fuzzy_pattern(q), _fuzzy_pattern(q),
+                    _like_pattern(q), _like_pattern(q),
+                ),
+            )
+        else:
+            cur.execute(ROUTE_SELECT + " ORDER BY r.name LIMIT 200")
+        rows = cur.fetchall()
+    conn.close()
+    return {"db_ok": True, "routes": [_route_row(r) for r in rows]}
+
+
+@app.post("/api/routes")
+def create_route(
+    name: str = Form(...),
+    content: str = Form(""),
+    files: list[UploadFile] = File(default=[]),
+):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    name = name.strip()[:100]
+    content = content.strip()[:5000]
+    if not name:
+        raise HTTPException(400, "車線名稱不能為空")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO route_records (name, content) "
+                "VALUES (%s, %s) RETURNING id",
+                (name, content),
+            )
+            rid = cur.fetchone()[0]
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"rt{rid}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO route_images (record_id, filename) VALUES (%s, %s)",
+                    (rid, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"id": rid, "name": name, "content": content, "images": images}
+
+
+class RouteUpdate(BaseModel):
+    name: str
+    content: str = ""
+
+
+@app.put("/api/routes/{record_id}")
+def update_route(record_id: int, body: RouteUpdate):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    name = body.name.strip()[:100]
+    content = body.content.strip()[:5000]
+    if not name:
+        raise HTTPException(400, "車線名稱不能為空")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE route_records SET name = %s, content = %s WHERE id = %s",
+            (name, content, record_id),
+        )
+        updated = cur.rowcount
+    conn.close()
+    if not updated:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True}
+
+
+@app.delete("/api/routes/{record_id}")
+def delete_route(record_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT filename FROM route_images WHERE record_id = %s", (record_id,)
+        )
+        for (rel,) in cur.fetchall():
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError as e:
+                print(f"刪除相片失敗 {rel}: {e}")
+        cur.execute("DELETE FROM route_records WHERE id = %s", (record_id,))
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True}
+
+
+@app.post("/api/routes/{record_id}/images")
+def add_route_images(record_id: int, files: list[UploadFile] = File(...)):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM route_records WHERE id = %s", (record_id,))
+            if not cur.fetchone():
+                raise HTTPException(404, "找不到記錄")
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"rt{record_id}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO route_images (record_id, filename) VALUES (%s, %s)",
+                    (record_id, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/routeimg")
+def delete_route_image(record_id: int, filename: str):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM route_images WHERE record_id = %s AND filename = %s",
+            (record_id, filename),
+        )
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到相片")
+    try:
+        (UPLOAD_DIR / filename).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除相片檔案失敗 {filename}: {e}")
+    return {"ok": True}
 
 
 # ---------- 帳號密碼二維碼（獨立功能，不進主頁歷史） ----------

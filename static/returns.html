@@ -767,18 +767,22 @@ $('dayFiles').addEventListener('change', async e => {
     if (!e.target.files.length) return;
     const picked = [...e.target.files];
     e.target.value = '';
+    clientLog(`當日相片: 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
     showToast(`已選 ${picked.length} 張相片，壓縮中…`);
     const files = await compressPhotos(picked);
+    clientLog(`當日相片: 壓縮後${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024)}KB, 開始上傳`);
     const fd = new FormData();
     fd.append('date', $('datePick').value);
     for (const f of files) fd.append('files', f);
     showToast(`上傳中…`);
     try {
-        const res = await fetch('/api/returns/dayimages', {method: 'POST', body: fd});
+        const res = await uploadWithTimeout('/api/returns/dayimages', {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        clientLog('當日相片: 上傳成功');
         showToast('已上傳當日貨物相片');
         loadRecords();
     } catch (err) {
+        clientLog('當日相片: 上傳失敗 ' + err.message);
         showToast('上傳失敗：' + err.message);
     }
 });
@@ -885,17 +889,21 @@ $('dPhotoFiles').addEventListener('change', async e => {
     const id = detailId;  // 鎖定當下的記錄
     const picked = [...e.target.files];
     e.target.value = '';
+    clientLog(`記錄照片(id=${id}): 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
     showToast(`已選 ${picked.length} 張照片，壓縮中…`);
     const files = await compressPhotos(picked);
+    clientLog(`記錄照片(id=${id}): 壓縮後${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024)}KB, 開始上傳`);
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
     showToast(`上傳中…`);
     try {
-        const res = await fetch(`/api/returns/${id}/images`, {method: 'POST', body: fd});
+        const res = await uploadWithTimeout(`/api/returns/${id}/images`, {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        clientLog(`記錄照片(id=${id}): 上傳成功`);
         showToast('已加入照片');
         await loadRecords();
     } catch (err) {
+        clientLog(`記錄照片(id=${id}): 上傳失敗 ` + err.message);
         showToast('上傳失敗：' + err.message);
     }
 });

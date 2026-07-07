@@ -415,6 +415,18 @@ async def pin_guard(request: Request, call_next):
     return await call_next(request)
 
 
+class ClientLog(BaseModel):
+    msg: str
+
+
+@app.post("/api/clientlog")
+def client_log(body: ClientLog, request: Request):
+    """前端錯誤/診斷回報，寫入伺服器日誌"""
+    ip = request.client.host if request.client else "?"
+    print(f"[前端 {ip}] {body.msg[:500]}", flush=True)
+    return {"ok": True}
+
+
 class GenerateBody(BaseModel):
     text: str
     location: str = ""

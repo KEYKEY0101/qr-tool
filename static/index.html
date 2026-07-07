@@ -629,13 +629,15 @@ $('qrPhotoInput').addEventListener('change', async e => {
     const rec = currentRecord;  // 鎖定當下的記錄
     const picked = [...e.target.files];
     e.target.value = '';
+    clientLog(`貨物相片(id=${rec.id}): 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
     showToast(`已選 ${picked.length} 張相片，壓縮中…`);
     const files = await compressPhotos(picked);
+    clientLog(`貨物相片(id=${rec.id}): 壓縮後${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024)}KB, 開始上傳`);
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
     showToast(`上傳中…`);
     try {
-        const res = await fetch(`/api/records/${rec.id}/images`, {
+        const res = await uploadWithTimeout(`/api/records/${rec.id}/images`, {
             method: 'POST',
             body: fd
         });
@@ -643,9 +645,11 @@ $('qrPhotoInput').addEventListener('change', async e => {
         const data = await res.json();
         rec.images = data.images;
         if (rec === currentRecord) renderResultPhotos();
+        clientLog(`貨物相片(id=${rec.id}): 上傳成功`);
         showToast('已加入貨物相片');
         loadRecords();
     } catch (err) {
+        clientLog(`貨物相片(id=${rec.id}): 上傳失敗 ` + err.message);
         showToast('上傳失敗：' + err.message);
     }
 });

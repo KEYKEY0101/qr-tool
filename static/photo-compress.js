@@ -32,3 +32,42 @@ async function compressPhotos(fileList) {
     for (const f of fileList) out.push(await compressPhoto(f));
     return out;
 }
+
+// ---------- 前端診斷回報（寫進伺服器日誌） ----------
+function clientLog(msg) {
+    try {
+        const data = JSON.stringify({msg: msg});
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/clientlog',
+                new Blob([data], {type: 'application/json'}));
+        } else {
+            fetch('/api/clientlog', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: data
+            }).catch(() => {});
+        }
+    } catch (e) { /* 回報失敗不影響功能 */ }
+}
+window.addEventListener('error', e => {
+    clientLog(`JS錯誤: ${e.message} @${(e.filename || '').split('/').pop()}:${e.lineno || 0}`);
+});
+window.addEventListener('unhandledrejection', e => {
+    clientLog('Promise錯誤: ' + ((e.reason && e.reason.message) || String(e.reason)).slice(0, 200));
+});
+
+// ---------- 帶逾時的上傳（避免卡住無回應） ----------
+async function uploadWithTimeout(url, opts, ms = 90000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+        return await fetch(url, {...opts, signal: ctrl.signal});
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new Error('上傳逾時（90秒），請檢查連線後再試');
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+}

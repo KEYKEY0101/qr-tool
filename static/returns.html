@@ -947,6 +947,7 @@ async function saveEdit() {
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已儲存修改');
+        closeDetail();  // 儲存成功後自動關閉視窗
         await loadRecords();
     } catch (e) {
         showToast('儲存失敗：' + e.message);

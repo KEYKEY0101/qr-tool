@@ -120,6 +120,7 @@ def init_db():
                     location TEXT NOT NULL DEFAULT '',
                     stack_base INTEGER NOT NULL DEFAULT 0,
                     stack_height INTEGER NOT NULL DEFAULT 0,
+                    pieces_per_box INTEGER NOT NULL DEFAULT 0,
                     qr_type TEXT NOT NULL DEFAULT 'goods',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
@@ -150,6 +151,11 @@ def init_db():
                 cur.execute(
                     "ALTER TABLE qr_records "
                     "ADD COLUMN qr_type TEXT NOT NULL DEFAULT 'goods'"
+                )
+            if qr_cols and "pieces_per_box" not in qr_cols:  # 件/箱
+                cur.execute(
+                    "ALTER TABLE qr_records "
+                    "ADD COLUMN pieces_per_box INTEGER NOT NULL DEFAULT 0"
                 )
             cur.execute(
                 """
@@ -464,6 +470,7 @@ class GenerateBody(BaseModel):
     location: str = ""
     base: int = 0
     height: int = 0
+    ppb: int = 0  # 件/箱
     qr_type: str = "goods"
 
 
@@ -566,13 +573,14 @@ def generate(body: GenerateBody):
     loc = body.location.strip().upper()[:50]
     base = _clamp_stack(body.base, "底")
     height = _clamp_stack(body.height, "高")
+    ppb = _clamp_stack(body.ppb, "件/箱")
     qr_type = _valid_qr_type(body.qr_type)
     png = make_qr_png(content)
     record = {
         "id": None, "content": content, "times": None, "created_at": None,
         "is_favorite": False, "location": loc,
         "stack_base": base, "stack_height": height,
-        "qr_type": qr_type, "images": [],
+        "pieces_per_box": ppb, "qr_type": qr_type, "images": [],
     }
 
     if DB_ERROR is None:
@@ -583,8 +591,9 @@ def generate(body: GenerateBody):
                 cur.execute(
                     """
                     INSERT INTO qr_records
-                        (content, location, stack_base, stack_height, qr_type)
-                    VALUES (%s, %s, %s, %s, %s)
+                        (content, location, stack_base, stack_height,
+                         pieces_per_box, qr_type)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (content) DO UPDATE
                         SET created_at = NOW(), times = qr_records.times + 1,
                             location = CASE WHEN EXCLUDED.location <> ''
@@ -595,11 +604,15 @@ def generate(body: GenerateBody):
                                 ELSE qr_records.stack_base END,
                             stack_height = CASE WHEN EXCLUDED.stack_height > 0
                                 THEN EXCLUDED.stack_height
-                                ELSE qr_records.stack_height END
+                                ELSE qr_records.stack_height END,
+                            pieces_per_box = CASE WHEN EXCLUDED.pieces_per_box > 0
+                                THEN EXCLUDED.pieces_per_box
+                                ELSE qr_records.pieces_per_box END
                     RETURNING id, content, times, created_at, is_favorite,
-                              location, stack_base, stack_height, qr_type
+                              location, stack_base, stack_height,
+                              pieces_per_box, qr_type
                     """,
-                    (content, loc, base, height, qr_type),
+                    (content, loc, base, height, ppb, qr_type),
                 )
                 row = cur.fetchone()
                 cur.execute(
@@ -616,7 +629,8 @@ def generate(body: GenerateBody):
                     "location": row[5],
                     "stack_base": row[6],
                     "stack_height": row[7],
-                    "qr_type": row[8],
+                    "pieces_per_box": row[8],
+                    "qr_type": row[9],
                     "images": imgs,
                 }
             conn.close()
@@ -629,7 +643,7 @@ def generate(body: GenerateBody):
 
 QR_SELECT = """
     SELECT id, content, times, created_at, is_favorite, location,
-           stack_base, stack_height, qr_type,
+           stack_base, stack_height, pieces_per_box, qr_type,
            COALESCE(
                (SELECT array_agg(i.filename ORDER BY i.id)
                 FROM qr_images i WHERE i.record_id = qr_records.id),
@@ -665,8 +679,9 @@ def _qr_row_dict(r):
         "location": r[5],
         "stack_base": r[6],
         "stack_height": r[7],
-        "qr_type": r[8],
-        "images": list(r[9]),
+        "pieces_per_box": r[8],
+        "qr_type": r[9],
+        "images": list(r[10]),
     }
 
 
@@ -735,25 +750,27 @@ class LocBody(BaseModel):
     location: str = ""
     base: int = 0
     height: int = 0
+    ppb: int = 0
     qr_type: str = "goods"
 
 
 @app.post("/api/records/{record_id}/location")
 def set_location(record_id: int, body: LocBody):
-    """事後補加／修改二維碼的位置、堆疊與類型（留空／0 即清除）"""
+    """事後補加／修改二維碼的位置、堆疊、件/箱與類型（留空／0 即清除）"""
     if DB_ERROR is not None:
         raise HTTPException(503, "資料庫未連線")
     loc = body.location.strip().upper()[:50]
     base = _clamp_stack(body.base, "底")
     height = _clamp_stack(body.height, "高")
+    ppb = _clamp_stack(body.ppb, "件/箱")
     qr_type = _valid_qr_type(body.qr_type)
     conn = get_conn()
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE qr_records SET location = %s, stack_base = %s, "
-            "stack_height = %s, qr_type = %s WHERE id = %s",
-            (loc, base, height, qr_type, record_id),
+            "stack_height = %s, pieces_per_box = %s, qr_type = %s WHERE id = %s",
+            (loc, base, height, ppb, qr_type, record_id),
         )
         updated = cur.rowcount
     conn.close()
@@ -761,7 +778,7 @@ def set_location(record_id: int, body: LocBody):
         raise HTTPException(404, "找不到記錄")
     return {
         "ok": True, "location": loc, "base": base,
-        "height": height, "qr_type": qr_type,
+        "height": height, "ppb": ppb, "qr_type": qr_type,
     }
 
 

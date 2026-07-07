@@ -240,6 +240,40 @@ nav a:hover { color: var(--primary); }
     font-size: .92rem;
     margin: -4px 0 10px;
 }
+#qrPpbView {
+    display: none;
+    color: var(--text-dim);
+    font-weight: bold;
+    font-size: .92rem;
+    margin: -4px 0 10px;
+}
+#pcsCalcRow {
+    max-width: 420px;
+    margin: 4px auto 10px;
+    padding: 12px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+}
+#pcsCalcInput {
+    width: 100%;
+    font-size: 1.15rem;
+    padding: 11px 13px;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    text-align: center;
+}
+#pcsCalcInput:focus { outline: none; }
+#pcsCalcResult {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--primary);
+    line-height: 1.6;
+    min-height: 0;
+    white-space: pre-line;
+}
 .result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .btn-sm {
     padding: 8px 16px;
@@ -437,6 +471,7 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <span class="x">×</span>
             <input id="heightInput" type="number" min="0" step="1" placeholder="高">
             <span id="stackCalc" class="calc"></span>
+            <input id="ppbInput" type="number" min="0" step="1" placeholder="件/箱" title="這款貨一箱有幾多件">
             <label class="type-check" title="打勾代表這是位置二維碼，不勾是貨物">
                 <input type="checkbox" id="typeLoc"><span>🚩 位置二維碼</span>
             </label>
@@ -450,6 +485,11 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
         <div id="qrMeta"></div>
         <div id="qrLocView"></div>
         <div id="qrStackView"></div>
+        <div id="qrPpbView"></div>
+        <div id="pcsCalcRow" style="display:none">
+            <input id="pcsCalcInput" type="number" min="0" step="1" placeholder="輸入寫字樓給的件數" inputmode="numeric">
+            <div id="pcsCalcResult"></div>
+        </div>
         <div class="result-btns">
             <a class="btn-sm" id="downloadBtn" href="#" download>⬇ 下載圖片</a>
             <button class="btn-sm" onclick="copyContent()">📋 複製文字</button>
@@ -462,6 +502,7 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
             <input id="locEditInput" type="text" placeholder="位置（留空清除）" autocomplete="off">
             <input id="baseEditInput" type="number" min="0" step="1" placeholder="底" class="stack-edit">
             <input id="heightEditInput" type="number" min="0" step="1" placeholder="高" class="stack-edit">
+            <input id="ppbEditInput" type="number" min="0" step="1" placeholder="件/箱" class="stack-edit">
             <label class="type-check" style="margin-left:0;padding:6px 10px;font-size:.85rem">
                 <input type="checkbox" id="typeEditCheck"><span>🚩 位置</span>
             </label>
@@ -540,6 +581,7 @@ async function generate() {
                 location: $('locInput').value.trim().toUpperCase(),
                 base: parseInt($('baseInput').value) || 0,
                 height: parseInt($('heightInput').value) || 0,
+                ppb: parseInt($('ppbInput').value) || 0,
                 qr_type: $('typeLoc').checked ? 'location' : 'goods'
             })
         });
@@ -551,6 +593,7 @@ async function generate() {
         $('locInput').value = '';  // 避免殘留寫到下一個二維碼
         $('baseInput').value = '';
         $('heightInput').value = '';
+        $('ppbInput').value = '';
         $('typeLoc').checked = false;
         updateStackCalc();
         $('qrInput').value = '';
@@ -580,6 +623,12 @@ function showResult(record, qrSrc) {
         ? `🧱 ${record.stack_base}底 × ${record.stack_height}高 = ${record.stack_base * record.stack_height}／板`
         : '';
     $('qrStackView').style.display = hasStack ? 'block' : 'none';
+    const hasPpb = record.pieces_per_box > 0;
+    $('qrPpbView').textContent = hasPpb ? `🧮 ${record.pieces_per_box} 件／箱` : '';
+    $('qrPpbView').style.display = hasPpb ? 'block' : 'none';
+    $('pcsCalcRow').style.display = hasPpb && record.id ? 'block' : 'none';
+    $('pcsCalcInput').value = '';
+    $('pcsCalcResult').textContent = '';
     const dl = $('downloadBtn');
     if (record.id) {
         dl.href = `/api/records/${record.id}/qr?download=true`;
@@ -599,6 +648,26 @@ function showResult(record, qrSrc) {
     renderResultPhotos();
     $('qrResult').scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
+
+// ---------- 件數計算器（寫字樓給件數 → 自動算箱數/板數） ----------
+function updatePcsCalc() {
+    const box = $('pcsCalcResult');
+    if (!currentRecord || !(currentRecord.pieces_per_box > 0)) { box.textContent = ''; return; }
+    const pieces = parseInt($('pcsCalcInput').value) || 0;
+    if (pieces <= 0) { box.textContent = ''; return; }
+    const ppb = currentRecord.pieces_per_box;
+    const boxes = Math.floor(pieces / ppb);
+    const remP = pieces % ppb;
+    let text = `${pieces} 件 ＝ ${boxes} 箱` + (remP ? `　餘 ${remP} 件` : '');
+    const perPallet = (currentRecord.stack_base || 0) * (currentRecord.stack_height || 0);
+    if (perPallet > 0) {
+        const pallets = Math.floor(boxes / perPallet);
+        const remB = boxes % perPallet;
+        text += `\n＝ ${pallets} 板` + (remB ? `　餘 ${remB} 箱` : '');
+    }
+    box.textContent = text;
+}
+$('pcsCalcInput').addEventListener('input', updatePcsCalc);
 
 // ---------- 常用 ----------
 function updateFavBtn() {
@@ -711,6 +780,7 @@ function toggleLocEdit() {
         $('locEditInput').value = currentRecord.location || '';
         $('baseEditInput').value = currentRecord.stack_base > 0 ? currentRecord.stack_base : '';
         $('heightEditInput').value = currentRecord.stack_height > 0 ? currentRecord.stack_height : '';
+        $('ppbEditInput').value = currentRecord.pieces_per_box > 0 ? currentRecord.pieces_per_box : '';
         $('typeEditCheck').checked = currentRecord.qr_type === 'location';
         $('locEditInput').focus();
     } else {
@@ -724,18 +794,20 @@ async function saveLoc() {
     const location = $('locEditInput').value.trim().toUpperCase();
     const base = parseInt($('baseEditInput').value) || 0;
     const height = parseInt($('heightEditInput').value) || 0;
+    const ppb = parseInt($('ppbEditInput').value) || 0;
     const qr_type = $('typeEditCheck').checked ? 'location' : 'goods';
     try {
         const res = await fetch(`/api/records/${rec.id}/location`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({location, base, height, qr_type})
+            body: JSON.stringify({location, base, height, ppb, qr_type})
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         const data = await res.json();
         rec.location = data.location;
         rec.stack_base = data.base;
         rec.stack_height = data.height;
+        rec.pieces_per_box = data.ppb;
         rec.qr_type = data.qr_type;
         if (rec === currentRecord) {
             $('qrLocView').textContent = rec.location ? '📍 ' + rec.location : '';
@@ -748,6 +820,11 @@ async function saveLoc() {
             const isLocType = rec.qr_type === 'location';
             $('qrTypeView').textContent = isLocType ? '🚩 位置二維碼' : '';
             $('qrTypeView').style.display = isLocType ? 'block' : 'none';
+            const hasPpb = rec.pieces_per_box > 0;
+            $('qrPpbView').textContent = hasPpb ? `🧮 ${rec.pieces_per_box} 件／箱` : '';
+            $('qrPpbView').style.display = hasPpb ? 'block' : 'none';
+            $('pcsCalcRow').style.display = hasPpb ? 'block' : 'none';
+            updatePcsCalc();
             $('locEditRow').style.display = 'none';
         }
         showToast('已儲存');
@@ -847,14 +924,16 @@ function renderRecords() {
         tr.querySelector('.content-cell').textContent = r.content;
         const hasStack = r.stack_base > 0 && r.stack_height > 0;
         const isLocType = r.qr_type === 'location';
-        if (r.is_favorite || (r.images && r.images.length) || r.location || hasStack || isLocType) {
+        const hasPpb = r.pieces_per_box > 0;
+        if (r.is_favorite || (r.images && r.images.length) || r.location || hasStack || isLocType || hasPpb) {
             const meta = document.createElement('span');
             meta.className = 'row-meta';
             meta.textContent = (isLocType ? ' 🚩位置' : '') +
                 (r.is_favorite ? ' ⭐' : '') +
                 (r.images && r.images.length ? ' 📷' + r.images.length : '') +
                 (r.location ? ' 📍' + r.location : '') +
-                (hasStack ? ` 🧱${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}` : '');
+                (hasStack ? ` 🧱${r.stack_base}×${r.stack_height}=${r.stack_base * r.stack_height}` : '') +
+                (hasPpb ? ` 🧮${r.pieces_per_box}件/箱` : '');
             tr.querySelector('.content-cell').appendChild(meta);
         }
         tr.onclick = () => openRecord(r);

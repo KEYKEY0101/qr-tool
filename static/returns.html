@@ -830,8 +830,10 @@ function renderList() {
             <span class="rec-content"></span>
             ${badges}
             <span class="rec-meta">${r.images.length ? '📷' + r.images.length : ''}</span>
+            <button class="mini-btn copy" title="複製這筆文字">📋</button>
             <button class="mini-btn del" title="刪除">✕</button>`;
         head.querySelector('.rec-content').textContent = r.content;
+        head.querySelector('.copy').onclick = ev => { ev.stopPropagation(); copyText(recordLine(r)); };
         head.querySelector('.del').onclick = ev => { ev.stopPropagation(); delRecord(r); };
         div.onclick = () => openDetail(r.id);
         div.appendChild(head);
@@ -979,19 +981,29 @@ async function delRecord(r) {
 }
 
 // ---------- WhatsApp 文字 ----------
+function recordLine(r) {
+    const qty = [];
+    if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
+    if (r.pcs > 0) qty.push(fmtNum(r.pcs) + (r.pcs_unit || 'PCS'));
+    if (r.kg > 0) qty.push(fmtNum(r.kg) + 'KG');
+    let tag = r.has_rt ? '有RT' : '沒有RT';
+    if (r.location) tag += '回位' + r.location;
+    return `${r.content} ${qty.join(' ')}(${tag})`;
+}
+
 function buildWaText() {
     if (!currentRecords.length) return '';
-    const lines = [];
-    for (const r of [...currentRecords].reverse()) {  // 由早到晚
-        const qty = [];
-        if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
-        if (r.pcs > 0) qty.push(fmtNum(r.pcs) + (r.pcs_unit || 'PCS'));
-        if (r.kg > 0) qty.push(fmtNum(r.kg) + 'KG');
-        let tag = r.has_rt ? '有RT' : '沒有RT';
-        if (r.location) tag += '回位' + r.location;
-        lines.push(`${r.content} ${qty.join(' ')}(${tag})`);
+    return [...currentRecords].reverse().map(recordLine).join('\n');  // 由早到晚
+}
+
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast('已複製，可貼到 WhatsApp'))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);  // http 環境（手機經 IP 連線）沒有 clipboard API
     }
-    return lines.join('\n');
 }
 
 function renderWaText() {
@@ -1003,13 +1015,7 @@ function renderWaText() {
 function copyWaText() {
     const text = buildWaText();
     if (!text) { showToast('沒有記錄可複製'); return; }
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text)
-            .then(() => showToast('已複製，可貼到 WhatsApp'))
-            .catch(() => fallbackCopy(text));
-    } else {
-        fallbackCopy(text);  // http 環境（手機經 IP 連線）沒有 clipboard API
-    }
+    copyText(text);
 }
 
 function fallbackCopy(text) {

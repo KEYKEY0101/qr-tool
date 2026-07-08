@@ -255,6 +255,16 @@ def init_db():
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS sameday_images (
+                    id SERIAL PRIMARY KEY,
+                    day DATE NOT NULL,
+                    filename TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS route_records (
                     id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -971,6 +981,94 @@ def accounts_page():
 @app.get("/routes")
 def routes_page():
     return FileResponse(BASE_DIR / "static" / "routes.html", headers=NO_CACHE)
+
+
+@app.get("/sameday")
+def sameday_page():
+    return FileResponse(BASE_DIR / "static" / "sameday.html", headers=NO_CACHE)
+
+
+# ---------- Same Day：每日早上出貨相片 ----------
+@app.get("/api/sameday")
+def list_sameday():
+    if DB_ERROR is not None:
+        return {"db_ok": False, "days": []}
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT day, id, filename FROM sameday_images
+            WHERE day >= (CURRENT_DATE - INTERVAL '90 days')
+            ORDER BY day DESC, id
+            """
+        )
+        day_map = {}
+        for day, iid, fn in cur.fetchall():
+            key = day.strftime("%Y-%m-%d")
+            day_map.setdefault(key, []).append({"id": iid, "filename": fn})
+    conn.close()
+    return {
+        "db_ok": True,
+        "days": [{"date": d, "images": imgs} for d, imgs in day_map.items()],
+    }
+
+
+@app.post("/api/sameday")
+def add_sameday_images(date: str = Form(""), files: list[UploadFile] = File(...)):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    day = date.strip() or time.strftime("%Y-%m-%d")
+    try:
+        time.strptime(day, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "日期格式錯誤")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"sd{day.replace('-', '')}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO sameday_images (day, filename) VALUES (%s, %s)",
+                    (day, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/sameday/{img_id}")
+def delete_sameday_image(img_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM sameday_images WHERE id = %s RETURNING filename",
+            (img_id,),
+        )
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "找不到相片")
+    try:
+        (UPLOAD_DIR / row[0]).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除相片檔案失敗 {row[0]}: {e}")
+    return {"ok": True}
 
 
 # ---------- 車線速查（純查找，不生成二維碼、不進主頁歷史） ----------

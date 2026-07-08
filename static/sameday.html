@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Same Day 出貨記錄</title>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --input-bg: #ffffff;
+    --hover-row: #eff6ff;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+[data-theme="dark"] {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --danger: #f87171;
+    --border: #374151;
+    --input-bg: #111827;
+    --hover-row: #1e3a5f;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+nav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+nav a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: .95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+nav a.active { color: var(--primary); background: var(--hover-row); font-weight: bold; }
+nav a:hover { color: var(--primary); }
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: .85rem;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+}
+.up-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.up-row input[type=date] {
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 1rem;
+}
+.btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    flex: 1;
+    min-width: 180px;
+}
+.btn:hover { background: var(--primary-hover); }
+.hint { color: var(--text-dim); font-size: .85rem; margin-top: 10px; }
+.day-sec { }
+.day-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.day-head h2 { font-size: 1.05rem; color: var(--primary); }
+.day-count { color: var(--text-dim); font-size: .85rem; }
+.photo-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.dp-item { position: relative; }
+.dp-item img {
+    width: 110px; height: 110px; object-fit: cover;
+    border-radius: 10px; border: 1px solid var(--border); cursor: pointer;
+}
+.dp-item .dp-rm {
+    position: absolute; top: -7px; right: -7px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: .72rem;
+    width: 22px; height: 22px;
+    line-height: 1;
+}
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 30px 10px; display: none; }
+.overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.82);
+    z-index: 60;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 12px;
+}
+.overlay.show { display: flex; }
+.overlay img { max-width: 96vw; max-height: 84vh; border-radius: 10px; background: #fff; }
+.overlay .cap { color: #fff; font-size: 1.05rem; font-weight: bold; text-align: center; }
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 10px; font-size: .9rem;
+    opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 90vw;
+    z-index: 99;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/">📦 二維碼生成器</a>
+        <a href="/favorites">⭐ 常用二維碼</a>
+        <a href="/returns">↩️ 退貨記錄</a>
+        <a href="/accounts">🔑 帳號密碼</a>
+        <a href="/routes">🚚 車線</a>
+        <a href="/sameday" class="active">📤 Same Day</a>
+    </nav>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙 深色</button>
+</header>
+
+<div class="container">
+    <div class="card">
+        <div class="up-row">
+            <input type="date" id="datePick">
+            <button class="btn" onclick="$('sdFiles').click()">📷 上傳出貨相片</button>
+            <input id="sdFiles" type="file" accept="image/*" multiple style="display:none">
+        </div>
+        <div class="hint">每日早上出貨拍照上傳 — 預設今天，補傳舊日期先改左邊日期。相片會自動壓縮。</div>
+    </div>
+
+    <div id="dayList" style="display:grid;gap:16px"></div>
+    <div id="emptyMsg" class="card">尚無出貨相片 — 按上面「📷 上傳出貨相片」開始記錄</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+    <img id="overlayImg" src="" alt="">
+    <div class="cap" id="overlayCap"></div>
+</div>
+<div id="toast"></div>
+
+<script src="/static/photo-compress.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'dark' ? '☀️ 淺色' : '🌙 深色';
+    localStorage.setItem('appTheme', t);
+}
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('appTheme') || 'light');
+
+function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function loadDays() {
+    try {
+        const res = await fetch('/api/sameday');
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.days)) return;
+        if (data.db_ok === false) {
+            $('emptyMsg').textContent = '⚠ 資料庫未連線';
+            $('emptyMsg').style.display = 'block';
+            return;
+        }
+        const list = $('dayList');
+        list.innerHTML = '';
+        $('emptyMsg').style.display = data.days.length ? 'none' : 'block';
+        for (const d of data.days) {
+            const card = document.createElement('div');
+            card.className = 'card day-sec';
+            const head = document.createElement('div');
+            head.className = 'day-head';
+            const wd = WEEKDAYS[new Date(d.date + 'T00:00:00').getDay()];
+            head.innerHTML = `<h2>📅 ${d.date}（${wd}）</h2><span class="day-count">${d.images.length} 張</span>`;
+            const grid = document.createElement('div');
+            grid.className = 'photo-grid';
+            for (const im of d.images) {
+                const item = document.createElement('div');
+                item.className = 'dp-item';
+                const img = document.createElement('img');
+                img.src = '/uploads/' + im.filename;
+                img.loading = 'lazy';
+                img.onclick = () => showImage('/uploads/' + im.filename, d.date + ' 出貨');
+                const rm = document.createElement('button');
+                rm.className = 'dp-rm';
+                rm.textContent = '✕';
+                rm.title = '刪除相片';
+                rm.onclick = () => delPhoto(im);
+                item.appendChild(img);
+                item.appendChild(rm);
+                grid.appendChild(item);
+            }
+            card.appendChild(head);
+            card.appendChild(grid);
+            list.appendChild(card);
+        }
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+
+$('sdFiles').addEventListener('change', async e => {
+    if (!e.target.files.length) return;
+    const picked = [...e.target.files];
+    e.target.value = '';
+    clientLog(`SameDay: 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
+    showToast(`已選 ${picked.length} 張相片，壓縮中…`);
+    const files = await compressPhotos(picked);
+    const fd = new FormData();
+    fd.append('date', $('datePick').value || todayStr());
+    for (const f of files) fd.append('files', f);
+    showToast('上傳中…');
+    try {
+        const res = await uploadWithTimeout('/api/sameday', {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        clientLog('SameDay: 上傳成功');
+        showToast('已上傳出貨相片');
+        loadDays();
+    } catch (err) {
+        clientLog('SameDay: 上傳失敗 ' + err.message);
+        showToast('上傳失敗：' + err.message);
+    }
+});
+
+async function delPhoto(im) {
+    if (!confirm('確定刪除這張相片？')) return;
+    try {
+        const res = await fetch(`/api/sameday/${im.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除相片');
+        loadDays();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
+
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+$('datePick').value = todayStr();
+loadDays();
+</script>
+<script src="/static/pull-refresh.js"></script>
+</body>
+</html>

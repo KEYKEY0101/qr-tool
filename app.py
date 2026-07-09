@@ -1653,6 +1653,14 @@ def update_return(record_id: int, body: ReturnUpdate):
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(
+            "SELECT content FROM return_records WHERE id = %s", (record_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            raise HTTPException(404, "找不到記錄")
+        old_content = row[0]
+        cur.execute(
             "UPDATE return_records SET content = %s, qty_ctn = %s, "
             "qty_pcs = %s, pcs_unit = %s, qty_kg = %s, has_rt = %s, "
             "location = %s WHERE id = %s",
@@ -1660,10 +1668,29 @@ def update_return(record_id: int, body: ReturnUpdate):
         )
         updated = cur.rowcount
         if updated:
+            if old_content != content:
+                # 改錯字：舊內容當時自動同步到主頁、而且沒被用過的話，順手清掉
+                cur.execute(
+                    """
+                    DELETE FROM qr_records q
+                    WHERE q.content = %s
+                      AND q.times <= 1
+                      AND NOT q.is_favorite
+                      AND q.qr_type = 'goods'
+                      AND q.stack_base = 0 AND q.stack_height = 0
+                      AND q.pieces_per_box = 0
+                      AND NOT EXISTS (
+                          SELECT 1 FROM qr_images i WHERE i.record_id = q.id
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM return_records r
+                          WHERE r.content = %s AND r.id <> %s
+                      )
+                    """,
+                    (old_content, old_content, record_id),
+                )
             _sync_qr_record(cur, content, loc)  # 同步到主頁歷史（位置以最新為準）
     conn.close()
-    if not updated:
-        raise HTTPException(404, "找不到記錄")
     return {"ok": True}
 
 

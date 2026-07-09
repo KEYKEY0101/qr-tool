@@ -1,3 +1,40 @@
+// 手機左右滑動換頁（順序照導覽列）
+(function () {
+    if (!('ontouchstart' in window)) return;  // 只在觸控裝置啟用
+    const PAGES = ['/', '/favorites', '/returns', '/accounts', '/routes', '/sameday'];
+    const cur = PAGES.indexOf(location.pathname || '/');
+    if (cur === -1) return;
+
+    let sx = 0, sy = 0, t0 = 0, tracking = false;
+
+    document.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) { tracking = false; return; }
+        const t = e.target;
+        // 彈窗內、輸入欄上滑動不換頁
+        if (t.closest && t.closest('.overlay, .detail-overlay, input, textarea, select')) {
+            tracking = false;
+            return;
+        }
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+        t0 = Date.now();
+        tracking = true;
+    }, {passive: true});
+
+    document.addEventListener('touchend', e => {
+        if (!tracking) return;
+        tracking = false;
+        const dx = e.changedTouches[0].clientX - sx;
+        const dy = e.changedTouches[0].clientY - sy;
+        const dt = Date.now() - t0;
+        // 要夠遠、夠水平、夠快，避免捲動/選字誤觸
+        if (Math.abs(dx) < 90 || Math.abs(dx) < Math.abs(dy) * 2 || dt > 600) return;
+        const next = dx < 0 ? cur + 1 : cur - 1;  // 向左掃=下一頁
+        if (next < 0 || next >= PAGES.length) return;
+        location.href = PAGES[next];
+    }, {passive: true});
+})();
+
 // 手機下拉重新整理（頁面在最頂端時往下拉）
 (function () {
     if (!('ontouchstart' in window)) return;  // 只在觸控裝置啟用

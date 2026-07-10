@@ -752,6 +752,34 @@ def records(q: str = "", fav: bool = False):
     }
 
 
+@app.get("/api/records/lookup")
+def lookup_record(content: str = ""):
+    """精確查詢主頁二維碼（退貨輸入時即時顯示舊位置用）"""
+    if DB_ERROR is not None:
+        return {"found": False}
+    c = content.strip().upper()
+    if not c:
+        return {"found": False}
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT location, stack_base, stack_height, pieces_per_box "
+            "FROM qr_records WHERE content = %s",
+            (c,),
+        )
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {"found": False}
+    return {
+        "found": True,
+        "location": row[0],
+        "base": row[1],
+        "height": row[2],
+        "ppb": row[3],
+    }
+
+
 class FavBody(BaseModel):
     on: bool
 

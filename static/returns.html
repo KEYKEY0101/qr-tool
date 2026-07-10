@@ -193,6 +193,18 @@ nav a:hover { color: var(--primary); }
     margin: 0;
 }
 #rContent:focus, .qty-box input:focus { outline: none; border-color: var(--primary); }
+#locHint {
+    margin-top: 8px;
+    padding: 9px 13px;
+    background: var(--hover-row);
+    border: 1px solid var(--primary);
+    border-radius: 10px;
+    color: var(--primary);
+    font-weight: bold;
+    font-size: .95rem;
+    cursor: pointer;
+    user-select: none;
+}
 .photo-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .photo-btn {
     border: 2px dashed var(--border);
@@ -454,6 +466,7 @@ nav a:hover { color: var(--primary); }
     <div class="card" id="addCard">
         <h2>➕ 新增退貨</h2>
         <input id="rContent" type="text" placeholder="退貨內容（自動轉大寫）" autocomplete="off">
+        <div id="locHint" style="display:none"></div>
         <div class="qty-grid">
             <div class="qty-box"><input id="qCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
             <div class="qty-box"><input id="qPcs" type="number" min="0" step="any" placeholder="0"><input id="qUnit" class="u-edit" value="PCS" maxlength="12" title="點擊可修改單位"></div>
@@ -662,6 +675,38 @@ function renderPreviews() {
     });
 }
 
+// ---------- 輸入內容時即時顯示主頁的舊位置 ----------
+let hintSeq = 0;
+let hintLoc = '';
+async function lookupLocation() {
+    const content = $('rContent').value.trim().toUpperCase();
+    const seq = ++hintSeq;
+    if (!content) { $('locHint').style.display = 'none'; return; }
+    try {
+        const res = await fetch('/api/records/lookup?content=' + encodeURIComponent(content));
+        const data = await res.json();
+        if (seq !== hintSeq) return;  // 舊請求不覆蓋新結果
+        if (data.found && data.location) {
+            hintLoc = data.location;
+            $('locHint').textContent = `📍 主頁記錄位置：${data.location}（點一下填入回倉位置）`;
+            $('locHint').style.display = 'block';
+        } else {
+            $('locHint').style.display = 'none';
+        }
+    } catch (e) { /* 查詢失敗不影響輸入 */ }
+}
+let hintTimer;
+$('rContent').addEventListener('input', () => {
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(lookupLocation, 300);
+});
+$('locHint').addEventListener('click', () => {
+    if (hintLoc) {
+        $('rLoc').value = hintLoc;
+        showToast('已填入回倉位置：' + hintLoc);
+    }
+});
+
 // ---------- 新增記錄 ----------
 async function addRecord() {
     const content = $('rContent').value.trim().toUpperCase();
@@ -695,6 +740,7 @@ async function addRecord() {
         $('qUnit').value = unit;  // 保留上次使用的單位
         $('rRt').checked = false;
         $('rLoc').value = '';
+        $('locHint').style.display = 'none';
         pendingFiles = [];
         renderPreviews();
         goToday();

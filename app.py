@@ -1822,6 +1822,15 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
+@app.get("/api/textqr")
+def text_qr(text: str = ""):
+    """任意文字轉二維碼（顯示位置二維碼用）"""
+    t = text.strip()
+    if not t:
+        raise HTTPException(400, "內容不能為空")
+    return Response(make_qr_png(t[:200]), media_type="image/png")
+
+
 @app.get("/api/urlqr")
 def url_qr(target: str = "lan"):
     """產生「手機掃描開啟本站」的二維碼（target: lan=同網路, remote=公網）"""

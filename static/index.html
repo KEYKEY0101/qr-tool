@@ -233,6 +233,18 @@ nav a:hover { color: var(--primary); }
     margin: -4px 0 10px;
     letter-spacing: 1px;
 }
+.loc-qr-btn {
+    background: none;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 3px 8px;
+    font-size: .85rem;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.loc-qr-btn:hover { background: var(--hover-row); }
 #qrStackView {
     display: none;
     color: var(--text-dim);
@@ -607,6 +619,20 @@ async function generate() {
     }
 }
 
+function setLocView(loc) {
+    const el = $('qrLocView');
+    el.innerHTML = '';
+    if (!loc) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.appendChild(document.createTextNode('📍 ' + loc));
+    const b = document.createElement('button');
+    b.className = 'loc-qr-btn';
+    b.textContent = '📱';
+    b.title = '顯示位置二維碼';
+    b.onclick = () => showImage('/api/textqr?text=' + encodeURIComponent(loc), '位置：' + loc);
+    el.appendChild(b);
+}
+
 function showResult(record, qrSrc) {
     currentRecord = record;
     $('qrResult').style.display = 'block';
@@ -617,8 +643,7 @@ function showResult(record, qrSrc) {
     $('qrTypeView').style.display = isLocType ? 'block' : 'none';
     $('qrMeta').textContent = (record.times ? `第 ${record.times} 次產生` : '') +
         (record.created_at ? `　${record.created_at}` : '');
-    $('qrLocView').textContent = record.location ? '📍 ' + record.location : '';
-    $('qrLocView').style.display = record.location ? 'block' : 'none';
+    setLocView(record.location);
     const hasStack = record.stack_base > 0 && record.stack_height > 0;
     $('qrStackView').textContent = hasStack
         ? `🧱 ${record.stack_base}底 × ${record.stack_height}高 = ${record.stack_base * record.stack_height}／板`
@@ -811,8 +836,7 @@ async function saveLoc() {
         rec.pieces_per_box = data.ppb;
         rec.qr_type = data.qr_type;
         if (rec === currentRecord) {
-            $('qrLocView').textContent = rec.location ? '📍 ' + rec.location : '';
-            $('qrLocView').style.display = rec.location ? 'block' : 'none';
+            setLocView(rec.location);
             const hasStack = rec.stack_base > 0 && rec.stack_height > 0;
             $('qrStackView').textContent = hasStack
                 ? `🧱 ${rec.stack_base}底 × ${rec.stack_height}高 = ${rec.stack_base * rec.stack_height}／板`

@@ -57,6 +57,7 @@ nav a {
     font-size: .95rem;
     padding: 6px 12px;
     border-radius: 8px;
+    white-space: nowrap;
 }
 nav a.active { color: var(--primary); background: var(--badge-bg); font-weight: bold; }
 nav a:hover { color: var(--primary); }
@@ -78,6 +79,96 @@ nav a:hover { color: var(--primary); }
     box-shadow: var(--shadow);
 }
 .card h2 { font-size: 1.05rem; margin-bottom: 14px; }
+.page-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.page-title { font-weight: bold; font-size: 1.05rem; }
+.nav-btn {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+.nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.day-head h2 { margin-bottom: 0; }
+.btn-today {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: .95rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-today:hover { background: var(--primary-hover); }
+.day-row, .batch-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.day-row:hover, .batch-row:hover { background: var(--hover-row); }
+.day-row:last-child, .batch-row:last-child { border-bottom: none; }
+.day-date { font-weight: bold; font-size: 1.02rem; white-space: nowrap; }
+.day-count { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
+.day-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.day-arrow { color: var(--text-dim); font-size: 1.1rem; }
+#dayEmpty, #batchEmpty { text-align: center; color: var(--text-dim); padding: 24px 10px; display: none; }
+.rec-qty {
+    background: var(--badge-bg);
+    color: var(--primary);
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    font-size: .88rem;
+}
+.totals { display: flex; gap: 10px; flex-wrap: wrap; }
+.total-box {
+    flex: 1 1 100px;
+    background: var(--badge-bg);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.total-box .num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+.total-box .lbl { font-size: .8rem; color: var(--text-dim); margin-top: 2px; }
+#tMID { white-space: pre-line; line-height: 1.3; }
+.d-photo-head, .day-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.day-photo-grid, .detail-photos { display: flex; gap: 10px; flex-wrap: wrap; }
+.dp-item { position: relative; }
+.dp-item img {
+    width: 110px; height: 110px; object-fit: cover;
+    border-radius: 10px; border: 1px solid var(--border); cursor: pointer;
+}
+.dp-item .dp-rm {
+    position: absolute; top: -7px; right: -7px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: .72rem;
+    width: 22px; height: 22px;
+    line-height: 1;
+}
+#dayPhotoEmpty { color: var(--text-dim); font-size: .88rem; text-align: center; padding: 14px 6px; }
+.photo-btn {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: none;
+    color: var(--text-dim);
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: .9rem;
+}
+.photo-btn:hover { border-color: var(--primary); color: var(--primary); }
 #rContent {
     width: 100%;
     font-size: 1.1rem;
@@ -87,6 +178,20 @@ nav a:hover { color: var(--primary); }
     background: var(--input-bg);
     color: var(--text);
     text-transform: uppercase;
+}
+#rContent:focus { outline: none; border-color: var(--primary); }
+#locHint {
+    margin-top: 8px;
+    padding: 9px 13px;
+    background: var(--hover-row);
+    border: 1px solid var(--primary);
+    border-radius: 10px;
+    color: var(--primary);
+    font-weight: bold;
+    font-size: .95rem;
+    cursor: pointer;
+    user-select: none;
+    display: none;
 }
 .qty-grid { display: flex; gap: 10px; margin-top: 10px; }
 .qty-box { flex: 1; position: relative; min-width: 0; }
@@ -100,6 +205,7 @@ nav a:hover { color: var(--primary); }
     background: var(--input-bg);
     color: var(--text);
 }
+.qty-box input:focus { outline: none; border-color: var(--primary); }
 .qty-box .u {
     position: absolute;
     right: 10px;
@@ -128,32 +234,8 @@ nav a:hover { color: var(--primary); }
     text-transform: uppercase;
 }
 .qty-box .u-edit:focus { outline: none; border-bottom: 1px solid var(--primary); }
-#qPcs { padding-right: 80px; }
-#tMID { white-space: pre-line; line-height: 1.3; }
+#qPcs, #ePcs { padding-right: 80px; }
 .extra-grid { display: flex; gap: 10px; margin-top: 10px; align-items: stretch; }
-.rt-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 0 16px;
-    cursor: pointer;
-    font-weight: bold;
-    color: var(--text-dim);
-    user-select: none;
-    white-space: nowrap;
-}
-.rt-check input {
-    width: 20px;
-    height: 20px;
-    accent-color: var(--primary);
-    cursor: pointer;
-}
-.rt-check:has(input:checked) {
-    border-color: #22c55e;
-    color: #22c55e;
-}
 .extra-grid input[type=text] {
     flex: 1;
     font-size: 1.05rem;
@@ -166,8 +248,50 @@ nav a:hover { color: var(--primary); }
     min-width: 0;
 }
 .extra-grid input[type=text]:focus { outline: none; border-color: var(--primary); }
-.rt-badge { background: rgba(34,197,94,.15); color: #22c55e; }
+.photo-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+#previews { display: flex; gap: 8px; flex-wrap: wrap; }
+#previews img {
+    width: 58px; height: 58px; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
+}
+.btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 26px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    margin-top: 12px;
+    width: 100%;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.record {
+    border-bottom: 1px solid var(--border);
+    padding: 13px 6px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+.record:hover { background: var(--hover-row); }
+.record:last-child { border-bottom: none; }
+.rec-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-time { color: var(--text-dim); font-size: .82rem; white-space: nowrap; }
+.rec-content { font-weight: bold; letter-spacing: 1px; word-break: break-all; flex: 1; min-width: 120px; }
+.rec-meta { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
+.mini-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 5px 9px;
+    font-size: .9rem;
+}
+.mini-btn:hover { border-color: var(--primary); }
+.mini-btn.del { color: var(--danger); }
 .mini-btn.locqr { color: var(--primary); border-color: var(--primary); }
+#emptyMsg { text-align: center; color: var(--text-dim); padding: 20px; display: none; }
 .wa-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .btn-copy {
     background: var(--primary);
@@ -193,165 +317,6 @@ nav a:hover { color: var(--primary); }
     color: var(--text);
     margin: 0;
 }
-#rContent:focus, .qty-box input:focus { outline: none; border-color: var(--primary); }
-#locHint {
-    margin-top: 8px;
-    padding: 9px 13px;
-    background: var(--hover-row);
-    border: 1px solid var(--primary);
-    border-radius: 10px;
-    color: var(--primary);
-    font-weight: bold;
-    font-size: .95rem;
-    cursor: pointer;
-    user-select: none;
-}
-.photo-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-.photo-btn {
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    background: none;
-    color: var(--text-dim);
-    padding: 10px 16px;
-    cursor: pointer;
-    font-size: .9rem;
-}
-.photo-btn:hover { border-color: var(--primary); color: var(--primary); }
-#previews { display: flex; gap: 8px; flex-wrap: wrap; }
-#previews img {
-    width: 58px; height: 58px; object-fit: cover;
-    border-radius: 8px; border: 1px solid var(--border);
-    cursor: pointer;
-}
-.btn {
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 12px 26px;
-    font-size: 1.05rem;
-    cursor: pointer;
-    margin-top: 12px;
-    width: 100%;
-}
-.btn:hover { background: var(--primary-hover); }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-.date-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.date-row input[type=date] {
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--text);
-    font-size: .95rem;
-}
-.nav-btn {
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--text);
-    border-radius: 8px;
-    padding: 8px 12px;
-    cursor: pointer;
-}
-.nav-btn:hover { border-color: var(--primary); color: var(--primary); }
-.totals { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-.total-box {
-    flex: 1 1 100px;
-    background: var(--badge-bg);
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-}
-.total-box .num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
-.total-box .lbl { font-size: .8rem; color: var(--text-dim); margin-top: 2px; }
-.record {
-    border-bottom: 1px solid var(--border);
-    padding: 13px 6px;
-    cursor: pointer;
-    border-radius: 8px;
-}
-.record:hover { background: var(--hover-row); }
-.record:last-child { border-bottom: none; }
-.rec-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.rec-time { color: var(--text-dim); font-size: .82rem; white-space: nowrap; }
-.rec-content { font-weight: bold; letter-spacing: 1px; word-break: break-all; flex: 1; min-width: 120px; }
-.rec-qty {
-    background: var(--badge-bg);
-    color: var(--primary);
-    font-weight: bold;
-    border-radius: 8px;
-    padding: 4px 10px;
-    white-space: nowrap;
-    font-size: .88rem;
-}
-.rec-meta { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
-.mini-btn {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    cursor: pointer;
-    padding: 5px 9px;
-    font-size: .9rem;
-}
-.mini-btn:hover { border-color: var(--primary); }
-.mini-btn.del { color: var(--danger); }
-#emptyMsg { text-align: center; color: var(--text-dim); padding: 20px; display: none; }
-
-/* 日期總覽 */
-.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-.day-head h2 { margin-bottom: 0; }
-.btn-today {
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-size: .95rem;
-    cursor: pointer;
-    white-space: nowrap;
-}
-.btn-today:hover { background: var(--primary-hover); }
-.day-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 15px 8px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    border-radius: 8px;
-    flex-wrap: wrap;
-}
-.day-row:hover { background: var(--hover-row); }
-.day-row:last-child { border-bottom: none; }
-.day-date { font-weight: bold; font-size: 1.02rem; white-space: nowrap; }
-.day-count { color: var(--text-dim); font-size: .85rem; white-space: nowrap; }
-.day-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-.day-arrow { color: var(--text-dim); font-size: 1.1rem; }
-#dayEmpty { text-align: center; color: var(--text-dim); padding: 24px 10px; }
-.day-page-bar { display: flex; align-items: center; gap: 12px; }
-.day-page-title { font-weight: bold; font-size: 1.05rem; }
-.day-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.day-photo-grid { display: flex; gap: 10px; flex-wrap: wrap; }
-.dp-item { position: relative; }
-.dp-item img {
-    width: 110px; height: 110px; object-fit: cover;
-    border-radius: 10px; border: 1px solid var(--border); cursor: pointer;
-}
-.dp-item .dp-rm {
-    position: absolute; top: -7px; right: -7px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    color: var(--danger);
-    cursor: pointer;
-    font-size: .72rem;
-    width: 22px; height: 22px;
-    line-height: 1;
-}
-#dayPhotoEmpty { color: var(--text-dim); font-size: .88rem; text-align: center; padding: 14px 6px; }
-
-/* 詳細頁 */
 .detail-overlay {
     display: none;
     position: fixed; inset: 0;
@@ -371,16 +336,6 @@ nav a:hover { color: var(--primary); }
 }
 .detail-top { display: flex; align-items: flex-start; gap: 10px; }
 .detail-top h2 { font-size: 1.2rem; letter-spacing: 1px; word-break: break-all; flex: 1; }
-.detail-meta { color: var(--text-dim); font-size: .85rem; margin-top: 6px; }
-.detail-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.detail-sec { margin-top: 18px; }
-.detail-sec h3 { font-size: .95rem; margin-bottom: 10px; color: var(--text-dim); }
-.d-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-.detail-photos { display: flex; gap: 10px; flex-wrap: wrap; }
-.detail-photos img {
-    width: 84px; height: 84px; object-fit: cover;
-    border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
-}
 .d-qr-sec { text-align: center; margin-top: 14px; }
 .d-qr-sec img {
     width: 190px;
@@ -391,6 +346,8 @@ nav a:hover { color: var(--primary); }
     padding: 6px;
     cursor: pointer;
 }
+.detail-sec { margin-top: 18px; }
+.detail-sec h3 { font-size: .95rem; margin-bottom: 10px; color: var(--text-dim); }
 .e-content {
     width: 100%;
     font-size: 1.05rem;
@@ -402,9 +359,7 @@ nav a:hover { color: var(--primary); }
     text-transform: uppercase;
 }
 .e-content:focus { outline: none; border-color: var(--primary); }
-#ePcs { padding-right: 80px; }
 #saveBtn { margin-top: 12px; }
-
 .overlay {
     display: none;
     position: fixed; inset: 0;
@@ -446,7 +401,7 @@ nav a:hover { color: var(--primary); }
 
 <div class="container">
 
-<!-- 第一層：日期總覽 -->
+<!-- 第一層：收貨日誌 -->
 <div id="dayView">
     <div class="card">
         <div class="day-head">
@@ -454,21 +409,56 @@ nav a:hover { color: var(--primary); }
             <button class="btn-today" onclick="showDay(todayStr())">➕ 今天的收貨</button>
         </div>
         <div id="dayList"></div>
-        <div id="dayEmpty" style="display:none">尚無收貨記錄，點右上「➕ 今天的收貨」開始</div>
+        <div id="dayEmpty">尚無收貨記錄，點右上「➕ 今天的收貨」開始</div>
     </div>
 </div>
 
-<!-- 第二層：單日頁面 -->
+<!-- 第二層：單日（時段列表＋當日相片） -->
 <div id="dayPage" style="display:none">
-    <div class="day-page-bar">
+    <div class="page-bar">
         <button class="nav-btn" onclick="backToDays()">← 日期列表</button>
-        <span class="day-page-title" id="dayPageTitle"></span>
+        <span class="page-title" id="dayPageTitle"></span>
     </div>
 
-    <div class="card" id="addCard">
+    <div class="card" style="margin-top:16px">
+        <div class="totals" id="dayTotals">
+            <div class="total-box"><div class="num" id="tCTN">0</div><div class="lbl">CTN 箱</div></div>
+            <div class="total-box"><div class="num" id="tMID">0</div><div class="lbl">件數（可自訂單位）</div></div>
+            <div class="total-box"><div class="num" id="tKG">0</div><div class="lbl">KG 公斤</div></div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+        <div class="day-head">
+            <h2>🕐 收貨時段（點擊進入記錄）</h2>
+            <button class="btn-today" onclick="createBatch()">➕ 新增時段（現在時間）</button>
+        </div>
+        <div id="batchList"></div>
+        <div id="batchEmpty">還沒有時段 — 收貨時按「➕ 新增時段」開始記錄</div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+        <div class="day-photo-head">
+            <h2 style="margin-bottom:0">📷 當日貨物相片</h2>
+            <button class="photo-btn" onclick="$('dayFiles').click()">📷 上傳相片</button>
+            <input id="dayFiles" type="file" accept="image/*" multiple style="display:none">
+        </div>
+        <div class="day-photo-grid" id="dayPhotos"></div>
+        <div id="dayPhotoEmpty">尚無相片</div>
+    </div>
+</div>
+
+<!-- 第三層：時段頁（記錄貨物） -->
+<div id="batchPage" style="display:none">
+    <div class="page-bar">
+        <button class="nav-btn" onclick="backToBatches()">← 返回時段</button>
+        <span class="page-title" id="batchPageTitle"></span>
+    </div>
+
+    <div class="card" style="margin-top:16px">
         <h2>➕ 新增收貨</h2>
         <input id="rContent" type="text" placeholder="收貨內容（自動轉大寫）" autocomplete="off">
-        <div id="locHint" style="display:none"></div>
+        <div id="locHint"></div>
         <div class="qty-grid">
             <div class="qty-box"><input id="qCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
             <div class="qty-box"><input id="qPcs" type="number" min="0" step="any" placeholder="0"><input id="qUnit" class="u-edit" value="PCS" maxlength="12" title="點擊可修改單位"></div>
@@ -485,43 +475,24 @@ nav a:hover { color: var(--primary); }
         <button class="btn" id="addBtn" onclick="addRecord()">新增收貨記錄</button>
     </div>
 
-    <div class="card">
-        <input type="date" id="datePick" style="display:none">
-        <div class="totals" style="margin-top:0">
-            <div class="total-box"><div class="num" id="tCTN">0</div><div class="lbl">CTN 箱</div></div>
-            <div class="total-box"><div class="num" id="tMID">0</div><div class="lbl">件數（可自訂單位）</div></div>
-            <div class="total-box"><div class="num" id="tKG">0</div><div class="lbl">KG 公斤</div></div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="day-photo-head">
-            <h2 style="margin-bottom:0">📷 當日貨物相片</h2>
-            <button class="photo-btn" onclick="$('dayFiles').click()">📷 上傳相片</button>
-            <input id="dayFiles" type="file" accept="image/*" multiple style="display:none">
-        </div>
-        <div class="day-photo-grid" id="dayPhotos"></div>
-        <div id="dayPhotoEmpty">尚無相片 — 把當天全部貨物拍一張上傳，之後回來看就一目了然</div>
-    </div>
-
-    <div class="card">
-        <h2>📄 當日記錄（點擊顯示二維碼／修改資料）</h2>
+    <div class="card" style="margin-top:16px">
+        <h2>📄 時段記錄（點擊顯示二維碼／修改資料）</h2>
         <div id="recordList"></div>
-        <div id="emptyMsg">這一天沒有收貨記錄</div>
+        <div id="emptyMsg">這個時段還沒有記錄</div>
     </div>
 
-    <div class="card" id="waCard" style="display:none">
+    <div class="card" id="waCard" style="display:none;margin-top:16px">
         <div class="wa-head">
-            <h2 style="margin-bottom:0">💬 WhatsApp 文字</h2>
+            <h2 style="margin-bottom:0">💬 WhatsApp 文字（此時段）</h2>
             <button class="btn-copy" onclick="copyWaText()">📋 複製文字</button>
         </div>
         <pre id="waText"></pre>
     </div>
-</div><!-- /dayPage -->
+</div>
 
 </div>
 
-<!-- 詳細頁 -->
+<!-- 記錄詳細（二維碼＋修改） -->
 <div class="detail-overlay" id="detailOverlay">
     <div class="detail-panel">
         <div class="detail-top">
@@ -569,8 +540,10 @@ nav a:hover { color: var(--primary); }
 const $ = id => document.getElementById(id);
 let pendingFiles = [];
 let currentRecords = [];
-let currentTotals = {};
 let detailId = null;
+let currentDate = '';
+let currentBatch = null;   // {id, time}
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 // ---------- 主題 ----------
 function applyTheme(t) {
@@ -583,31 +556,35 @@ function toggleTheme() {
 }
 applyTheme(localStorage.getItem('appTheme') || 'light');
 
-// ---------- 日期 ----------
 function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 function weekdayOf(dateStr) {
     return WEEKDAYS[new Date(dateStr + 'T00:00:00').getDay()];
 }
+function fmtNum(n) {
+    return Number.isInteger(Number(n)) ? String(Number(n)) : Number(n).toFixed(2);
+}
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
 
-// ---------- 第一層：日期總覽 ----------
+// ---------- 第一層：日誌 ----------
 async function loadDays() {
     try {
         const res = await fetch('/api/receipts/days');
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || res.statusText);
+        if (!res.ok || !Array.isArray(data.days)) return;
         const list = $('dayList');
         list.innerHTML = '';
         if (data.db_ok === false) {
-            $('dayEmpty').textContent = '⚠ 資料庫未連線，無法載入記錄';
+            $('dayEmpty').textContent = '⚠ 資料庫未連線';
             $('dayEmpty').style.display = 'block';
             return;
         }
         $('dayEmpty').style.display = data.days.length ? 'none' : 'block';
-        $('dayEmpty').textContent = '尚無收貨記錄，點右上「➕ 今天的收貨」開始';
         for (const d of data.days) {
             const row = document.createElement('div');
             row.className = 'day-row';
@@ -629,143 +606,27 @@ async function loadDays() {
 }
 
 function showDay(date) {
-    $('datePick').value = date;
+    currentDate = date;
     $('dayView').style.display = 'none';
+    $('batchPage').style.display = 'none';
     $('dayPage').style.display = '';
-    loadRecords();
+    $('dayPageTitle').textContent = `${date}（${weekdayOf(date)}）`;
+    loadDayData();
     window.scrollTo(0, 0);
 }
-
 function backToDays() {
-    closeDetail();
     $('dayPage').style.display = 'none';
     $('dayView').style.display = '';
     loadDays();
     window.scrollTo(0, 0);
 }
 
-function updateDayPageChrome() {
-    const d = $('datePick').value;
-    $('dayPageTitle').textContent = `${d}（${weekdayOf(d)}）`;
-    // 只有「今天」的頁面才能新增收貨
-    $('addCard').style.display = d === todayStr() ? '' : 'none';
-}
-
-function goToday() { $('datePick').value = todayStr(); loadRecords(); }
-
-// ---------- 照片預覽 ----------
-$('rFiles').addEventListener('change', () => {
-    for (const f of $('rFiles').files) pendingFiles.push(f);
-    $('rFiles').value = '';
-    renderPreviews();
-});
-function renderPreviews() {
-    const box = $('previews');
-    box.querySelectorAll('img').forEach(img => URL.revokeObjectURL(img.src));
-    box.innerHTML = '';
-    pendingFiles.forEach((f, i) => {
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(f);
-        img.title = '點擊移除';
-        img.onclick = () => { pendingFiles.splice(i, 1); renderPreviews(); };
-        box.appendChild(img);
-    });
-}
-
-// ---------- 輸入內容時即時顯示主頁的舊位置 ----------
-let hintSeq = 0;
-let hintLoc = '';
-async function lookupLocation() {
-    const content = $('rContent').value.trim().toUpperCase();
-    const seq = ++hintSeq;
-    if (!content) { $('locHint').style.display = 'none'; return; }
+async function loadDayData() {
     try {
-        const res = await fetch('/api/records/lookup?content=' + encodeURIComponent(content));
-        const data = await res.json();
-        if (seq !== hintSeq) return;  // 舊請求不覆蓋新結果
-        if (data.found && data.location) {
-            hintLoc = data.location;
-            $('locHint').textContent = `📍 主頁記錄位置：${data.location}（點一下填入存放位置）`;
-            $('locHint').style.display = 'block';
-        } else {
-            $('locHint').style.display = 'none';
-        }
-    } catch (e) { /* 查詢失敗不影響輸入 */ }
-}
-let hintTimer;
-$('rContent').addEventListener('input', () => {
-    clearTimeout(hintTimer);
-    hintTimer = setTimeout(lookupLocation, 300);
-});
-$('locHint').addEventListener('click', () => {
-    if (hintLoc) {
-        $('rLoc').value = hintLoc;
-        showToast('已填入存放位置：' + hintLoc);
-    }
-});
-
-// ---------- 新增記錄 ----------
-async function addRecord() {
-    const content = $('rContent').value.trim().toUpperCase();
-    const ctn = $('qCtn').value.trim() || '0';
-    const pcs = $('qPcs').value.trim() || '0';
-    const kg = $('qKg').value.trim() || '0';
-    const unit = $('qUnit').value.trim().toUpperCase() || 'PCS';
-    if (!content) { showToast('請輸入收貨內容'); return; }
-    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
-        showToast('至少輸入一項數量'); return;
-    }
-    $('addBtn').disabled = true;
-    $('addBtn').textContent = '上傳中…';
-    try {
-        const fd = new FormData();
-        fd.append('content', content);
-        fd.append('ctn', ctn);
-        fd.append('pcs', pcs);
-        fd.append('kg', kg);
-        fd.append('pcs_unit', unit);
-        fd.append('location', $('rLoc').value.trim().toUpperCase());
-        localStorage.setItem('lastUnit', unit);
-        const compressed = await compressPhotos(pendingFiles);
-        compressed.forEach(f => fd.append('files', f));
-        const res = await fetch('/api/receipts', {method: 'POST', body: fd});
-        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        showToast('已新增收貨記錄');
-        $('rContent').value = '';
-        $('qCtn').value = ''; $('qPcs').value = ''; $('qKg').value = '';
-        $('qUnit').value = unit;  // 保留上次使用的單位
-        $('rLoc').value = '';
-        $('locHint').style.display = 'none';
-        pendingFiles = [];
-        renderPreviews();
-        goToday();
-    } catch (e) {
-        showToast('新增失敗：' + e.message);
-    } finally {
-        $('addBtn').disabled = false;
-        $('addBtn').textContent = '新增收貨記錄';
-    }
-}
-
-// ---------- 列表 ----------
-async function loadRecords() {
-    if (!$('datePick').value) $('datePick').value = todayStr();
-    updateDayPageChrome();
-    try {
-        const res = await fetch('/api/receipts?date=' + $('datePick').value);
+        const res = await fetch('/api/receipts?date=' + currentDate);
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.statusText);
-        if (data.db_ok === false) {
-            currentRecords = [];
-            $('tCTN').textContent = $('tMID').textContent = $('tKG').textContent = '－';
-            renderList();
-            $('emptyMsg').textContent = '⚠ 資料庫未連線，無法載入收貨記錄';
-            return;
-        }
-        currentRecords = data.records;
-        currentTotals = data.totals;
-        renderDayPhotos(data.day_images || []);
-        renderWaText();
+        if (data.db_ok === false) { showToast('⚠ 資料庫未連線'); return; }
         $('tCTN').textContent = fmtNum(data.totals.CTN || 0);
         const units = data.totals.units || [];
         $('tMID').textContent = units.length
@@ -773,74 +634,108 @@ async function loadRecords() {
             : '0';
         $('tMID').style.fontSize = units.length > 1 ? '1.05rem' : '';
         $('tKG').textContent = fmtNum(data.totals.KG || 0);
-        $('emptyMsg').textContent = '這一天沒有收貨記錄';
-        renderList();
-        if (detailId !== null) renderDetail();  // 詳細頁開著時同步更新
+        renderDayPhotos(data.day_images || []);
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+    loadBatches();
+}
+
+// ---------- 時段 ----------
+async function loadBatches() {
+    try {
+        const res = await fetch('/api/receipts/batches?date=' + currentDate);
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.batches)) return;
+        const list = $('batchList');
+        list.innerHTML = '';
+        $('batchEmpty').style.display = data.batches.length ? 'none' : 'block';
+        for (const b of data.batches) {
+            const row = document.createElement('div');
+            row.className = 'batch-row';
+            const badges = [];
+            if (b.ctn > 0) badges.push(fmtNum(b.ctn) + ' CTN');
+            for (const u of (b.units || [])) badges.push(fmtNum(u.qty) + ' ' + esc(u.unit));
+            if (b.kg > 0) badges.push(fmtNum(b.kg) + ' KG');
+            row.innerHTML = `
+                <span class="day-date">🕐 ${b.time}</span>
+                <span class="day-count">${b.count} 筆</span>
+                <span class="day-badges">${badges.map(t => `<span class="rec-qty">${t}</span>`).join('')}</span>
+                <button class="mini-btn del" title="刪除時段">✕</button>
+                <span class="day-arrow">›</span>`;
+            row.querySelector('.del').onclick = ev => { ev.stopPropagation(); delBatch(b); };
+            row.onclick = () => openBatch(b);
+            list.appendChild(row);
+        }
     } catch (e) {
         showToast('載入失敗：' + e.message);
     }
 }
-function esc(s) {
-    return String(s).replace(/[&<>"']/g, c =>
-        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-}
-// ---------- 當日貨物相片 ----------
-function renderDayPhotos(imgs) {
-    const grid = $('dayPhotos');
-    grid.innerHTML = '';
-    $('dayPhotoEmpty').style.display = imgs.length ? 'none' : 'block';
-    for (const im of imgs) {
-        const item = document.createElement('div');
-        item.className = 'dp-item';
-        const img = document.createElement('img');
-        img.src = '/uploads/' + im.filename;
-        img.loading = 'lazy';
-        img.onclick = () => showImage('/uploads/' + im.filename, $('datePick').value + ' 貨物相片');
-        const rm = document.createElement('button');
-        rm.className = 'dp-rm';
-        rm.textContent = '✕';
-        rm.title = '刪除相片';
-        rm.onclick = () => delDayPhoto(im);
-        item.appendChild(img);
-        item.appendChild(rm);
-        grid.appendChild(item);
+
+async function createBatch() {
+    try {
+        const res = await fetch('/api/receipts/batches', {method: 'POST'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const b = await res.json();
+        showToast('已建立時段 ' + b.time);
+        currentDate = b.date;
+        openBatch({id: b.id, time: b.time});
+    } catch (e) {
+        showToast('建立失敗：' + e.message);
     }
 }
 
-$('dayFiles').addEventListener('change', async e => {
-    if (!e.target.files.length) return;
-    const picked = [...e.target.files];
-    e.target.value = '';
-    clientLog(`當日相片: 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
-    showToast(`已選 ${picked.length} 張相片，壓縮中…`);
-    const files = await compressPhotos(picked);
-    clientLog(`當日相片: 壓縮後${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024)}KB, 開始上傳`);
-    const fd = new FormData();
-    fd.append('date', $('datePick').value);
-    for (const f of files) fd.append('files', f);
-    showToast(`上傳中…`);
+async function delBatch(b) {
+    if (!confirm(`確定刪除 ${b.time} 時段？裡面的 ${b.count} 筆記錄和照片會一併刪除。`)) return;
     try {
-        const res = await uploadWithTimeout('/api/receipts/dayimages', {method: 'POST', body: fd});
+        const res = await fetch(`/api/receipts/batches/${b.id}`, {method: 'DELETE'});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        clientLog('當日相片: 上傳成功');
-        showToast('已上傳當日貨物相片');
-        loadRecords();
-    } catch (err) {
-        clientLog('當日相片: 上傳失敗 ' + err.message);
-        showToast('上傳失敗：' + err.message);
-    }
-});
-
-async function delDayPhoto(im) {
-    if (!confirm('確定刪除這張相片？')) return;
-    try {
-        const res = await fetch(`/api/rdayimg/${im.id}`, {method: 'DELETE'});
-        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        showToast('已刪除相片');
-        loadRecords();
+        showToast('已刪除時段');
+        loadDayData();
     } catch (e) {
         showToast('刪除失敗：' + e.message);
     }
+}
+
+function openBatch(b) {
+    currentBatch = b;
+    $('dayPage').style.display = 'none';
+    $('dayView').style.display = 'none';
+    $('batchPage').style.display = '';
+    $('batchPageTitle').textContent = `${currentDate}　🕐 ${b.time} 時段`;
+    loadBatchRecords();
+    window.scrollTo(0, 0);
+}
+function backToBatches() {
+    closeDetail();
+    currentBatch = null;
+    $('batchPage').style.display = 'none';
+    showDay(currentDate);
+}
+
+// ---------- 時段記錄 ----------
+async function loadBatchRecords() {
+    if (!currentBatch) return;
+    try {
+        const res = await fetch('/api/receipts?batch=' + currentBatch.id);
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.records)) return;
+        currentRecords = data.records;
+        renderList();
+        renderWaText();
+        if (detailId !== null) renderDetail();
+    } catch (e) {
+        showToast('載入失敗：' + e.message);
+    }
+}
+
+function recordLine(r) {
+    const qty = [];
+    if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
+    if (r.pcs > 0) qty.push(fmtNum(r.pcs) + (r.pcs_unit || 'PCS'));
+    if (r.kg > 0) qty.push(fmtNum(r.kg) + 'KG');
+    const tag = r.location ? `(位置${r.location})` : '';
+    return `${r.content} ${qty.join(' ')}${tag}`;
 }
 
 function qtyBadges(r) {
@@ -850,11 +745,7 @@ function qtyBadges(r) {
     if (r.kg > 0) parts.push(fmtNum(r.kg) + ' KG');
     return parts;
 }
-function extraBadges(r) {
-    let html = '';
-    if (r.location) html += `<span class="rec-qty">📍${esc(r.location)}</span>`;
-    return html;
-}
+
 function renderList() {
     const list = $('recordList');
     list.innerHTML = '';
@@ -864,7 +755,8 @@ function renderList() {
         div.className = 'record';
         const head = document.createElement('div');
         head.className = 'rec-head';
-        const badges = qtyBadges(r).map(t => `<span class="rec-qty">${t}</span>`).join('') + extraBadges(r);
+        const badges = qtyBadges(r).map(t => `<span class="rec-qty">${t}</span>`).join('') +
+            (r.location ? `<span class="rec-qty">📍${esc(r.location)}</span>` : '');
         head.innerHTML = `
             <span class="rec-time">${r.created_at.slice(11, 16)}</span>
             <span class="rec-content"></span>
@@ -891,11 +783,103 @@ function renderList() {
         list.appendChild(div);
     }
 }
-function fmtNum(n) {
-    return Number.isInteger(Number(n)) ? String(Number(n)) : Number(n).toFixed(2);
+
+// ---------- 輸入內容時即時顯示主頁的舊位置 ----------
+let hintSeq = 0;
+let hintLoc = '';
+async function lookupLocation() {
+    const content = $('rContent').value.trim().toUpperCase();
+    const seq = ++hintSeq;
+    if (!content) { $('locHint').style.display = 'none'; return; }
+    try {
+        const res = await fetch('/api/records/lookup?content=' + encodeURIComponent(content));
+        const data = await res.json();
+        if (seq !== hintSeq) return;
+        if (data.found && data.location) {
+            hintLoc = data.location;
+            $('locHint').textContent = `📍 主頁記錄位置：${data.location}（點一下填入存放位置）`;
+            $('locHint').style.display = 'block';
+        } else {
+            $('locHint').style.display = 'none';
+        }
+    } catch (e) { /* 查詢失敗不影響輸入 */ }
+}
+let hintTimer;
+$('rContent').addEventListener('input', () => {
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(lookupLocation, 300);
+});
+$('locHint').addEventListener('click', () => {
+    if (hintLoc) {
+        $('rLoc').value = hintLoc;
+        showToast('已填入存放位置：' + hintLoc);
+    }
+});
+
+// ---------- 新增記錄 ----------
+$('rFiles').addEventListener('change', () => {
+    for (const f of $('rFiles').files) pendingFiles.push(f);
+    $('rFiles').value = '';
+    renderPreviews();
+});
+function renderPreviews() {
+    const box = $('previews');
+    box.querySelectorAll('img').forEach(img => URL.revokeObjectURL(img.src));
+    box.innerHTML = '';
+    pendingFiles.forEach((f, i) => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f);
+        img.title = '點擊移除';
+        img.onclick = () => { pendingFiles.splice(i, 1); renderPreviews(); };
+        box.appendChild(img);
+    });
 }
 
-// ---------- 詳細頁 ----------
+async function addRecord() {
+    if (!currentBatch) { showToast('請先進入一個時段'); return; }
+    const content = $('rContent').value.trim().toUpperCase();
+    const ctn = $('qCtn').value.trim() || '0';
+    const pcs = $('qPcs').value.trim() || '0';
+    const kg = $('qKg').value.trim() || '0';
+    const unit = $('qUnit').value.trim().toUpperCase() || 'PCS';
+    if (!content) { showToast('請輸入收貨內容'); return; }
+    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
+        showToast('至少輸入一項數量'); return;
+    }
+    $('addBtn').disabled = true;
+    $('addBtn').textContent = '上傳中…';
+    try {
+        const fd = new FormData();
+        fd.append('content', content);
+        fd.append('ctn', ctn);
+        fd.append('pcs', pcs);
+        fd.append('kg', kg);
+        fd.append('pcs_unit', unit);
+        fd.append('location', $('rLoc').value.trim().toUpperCase());
+        fd.append('batch_id', currentBatch.id);
+        localStorage.setItem('lastUnit', unit);
+        const compressed = await compressPhotos(pendingFiles);
+        compressed.forEach(f => fd.append('files', f));
+        const res = await uploadWithTimeout('/api/receipts', {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已新增收貨記錄');
+        $('rContent').value = '';
+        $('qCtn').value = ''; $('qPcs').value = ''; $('qKg').value = '';
+        $('qUnit').value = unit;
+        $('rLoc').value = '';
+        $('locHint').style.display = 'none';
+        pendingFiles = [];
+        renderPreviews();
+        loadBatchRecords();
+    } catch (e) {
+        showToast('新增失敗：' + e.message);
+    } finally {
+        $('addBtn').disabled = false;
+        $('addBtn').textContent = '新增收貨記錄';
+    }
+}
+
+// ---------- 詳細（修改） ----------
 function openDetail(id) {
     detailId = id;
     renderDetail();
@@ -946,24 +930,20 @@ function renderDetail() {
 
 $('dPhotoFiles').addEventListener('change', async e => {
     if (detailId === null || !e.target.files.length) return;
-    const id = detailId;  // 鎖定當下的記錄
+    const id = detailId;
     const picked = [...e.target.files];
     e.target.value = '';
-    clientLog(`記錄照片(id=${id}): 選了${picked.length}張, ${Math.round(picked.reduce((s, f) => s + f.size, 0) / 1024)}KB`);
     showToast(`已選 ${picked.length} 張照片，壓縮中…`);
     const files = await compressPhotos(picked);
-    clientLog(`記錄照片(id=${id}): 壓縮後${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024)}KB, 開始上傳`);
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
-    showToast(`上傳中…`);
+    showToast('上傳中…');
     try {
         const res = await uploadWithTimeout(`/api/receipts/${id}/images`, {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        clientLog(`記錄照片(id=${id}): 上傳成功`);
         showToast('已加入照片');
-        await loadRecords();
+        await loadBatchRecords();
     } catch (err) {
-        clientLog(`記錄照片(id=${id}): 上傳失敗 ` + err.message);
         showToast('上傳失敗：' + err.message);
     }
 });
@@ -977,7 +957,7 @@ async function delRetPhoto(r, rel) {
         );
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已刪除照片');
-        await loadRecords();
+        await loadBatchRecords();
     } catch (e) {
         showToast('刪除失敗：' + e.message);
     }
@@ -1006,8 +986,8 @@ async function saveEdit() {
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已儲存修改');
-        closeDetail();  // 儲存成功後自動關閉視窗
-        await loadRecords();
+        closeDetail();
+        await loadBatchRecords();
     } catch (e) {
         showToast('儲存失敗：' + e.message);
     } finally {
@@ -1015,62 +995,98 @@ async function saveEdit() {
     }
 }
 
-function showImage(src, cap) {
-    $('overlayImg').src = src;
-    $('overlayCap').textContent = cap;
-    $('overlay').classList.add('show');
-}
-
 async function delRecord(r) {
-    if (!confirm(`確定刪除「${r.content}」這筆收貨記錄？照片和二維碼也會一併刪除。`)) return;
+    if (!confirm(`確定刪除「${r.content}」這筆收貨記錄？照片也會一併刪除。`)) return;
     try {
         const res = await fetch(`/api/receipts/${r.id}`, {method: 'DELETE'});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已刪除');
         if (detailId === r.id) closeDetail();
-        loadRecords();
+        loadBatchRecords();
     } catch (e) {
         showToast('刪除失敗：' + e.message);
     }
 }
 
-// ---------- WhatsApp 文字 ----------
-function recordLine(r) {
-    const qty = [];
-    if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
-    if (r.pcs > 0) qty.push(fmtNum(r.pcs) + (r.pcs_unit || 'PCS'));
-    if (r.kg > 0) qty.push(fmtNum(r.kg) + 'KG');
-    const tag = r.location ? `(位置${r.location})` : '';
-    return `${r.content} ${qty.join(' ')}${tag}`;
+// ---------- 當日貨物相片 ----------
+function renderDayPhotos(imgs) {
+    const grid = $('dayPhotos');
+    grid.innerHTML = '';
+    $('dayPhotoEmpty').style.display = imgs.length ? 'none' : 'block';
+    for (const im of imgs) {
+        const item = document.createElement('div');
+        item.className = 'dp-item';
+        const img = document.createElement('img');
+        img.src = '/uploads/' + im.filename;
+        img.loading = 'lazy';
+        img.onclick = () => showImage('/uploads/' + im.filename, currentDate + ' 收貨相片');
+        const rm = document.createElement('button');
+        rm.className = 'dp-rm';
+        rm.textContent = '✕';
+        rm.title = '刪除相片';
+        rm.onclick = () => delDayPhoto(im);
+        item.appendChild(img);
+        item.appendChild(rm);
+        grid.appendChild(item);
+    }
 }
 
+$('dayFiles').addEventListener('change', async e => {
+    if (!e.target.files.length) return;
+    const picked = [...e.target.files];
+    e.target.value = '';
+    showToast(`已選 ${picked.length} 張相片，壓縮中…`);
+    const files = await compressPhotos(picked);
+    const fd = new FormData();
+    fd.append('date', currentDate);
+    for (const f of files) fd.append('files', f);
+    showToast('上傳中…');
+    try {
+        const res = await uploadWithTimeout('/api/receipts/dayimages', {method: 'POST', body: fd});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已上傳當日貨物相片');
+        loadDayData();
+    } catch (err) {
+        showToast('上傳失敗：' + err.message);
+    }
+});
+
+async function delDayPhoto(im) {
+    if (!confirm('確定刪除這張相片？')) return;
+    try {
+        const res = await fetch(`/api/rdayimg/${im.id}`, {method: 'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        showToast('已刪除相片');
+        loadDayData();
+    } catch (e) {
+        showToast('刪除失敗：' + e.message);
+    }
+}
+
+// ---------- WhatsApp 文字（此時段） ----------
 function buildWaText() {
     if (!currentRecords.length) return '';
-    return [...currentRecords].reverse().map(recordLine).join('\n');  // 由早到晚
+    return [...currentRecords].reverse().map(recordLine).join('\n');
 }
-
+function renderWaText() {
+    const text = buildWaText();
+    $('waCard').style.display = text ? '' : 'none';
+    $('waText').textContent = text;
+}
 function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text)
             .then(() => showToast('已複製，可貼到 WhatsApp'))
             .catch(() => fallbackCopy(text));
     } else {
-        fallbackCopy(text);  // http 環境（手機經 IP 連線）沒有 clipboard API
+        fallbackCopy(text);
     }
 }
-
-function renderWaText() {
-    const text = buildWaText();
-    $('waCard').style.display = text ? '' : 'none';
-    $('waText').textContent = text;
-}
-
 function copyWaText() {
     const text = buildWaText();
     if (!text) { showToast('沒有記錄可複製'); return; }
     copyText(text);
 }
-
 function fallbackCopy(text) {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -1088,6 +1104,11 @@ function fallbackCopy(text) {
 }
 
 // ---------- 其他 ----------
+function showImage(src, cap) {
+    $('overlayImg').src = src;
+    $('overlayCap').textContent = cap;
+    $('overlay').classList.add('show');
+}
 function showToast(msg) {
     const t = $('toast');
     t.textContent = msg;
@@ -1096,31 +1117,17 @@ function showToast(msg) {
     t._timer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 bindUppercase($('rContent'));
+bindUppercase($('rLoc'));
+bindUppercase($('qUnit'));
 bindUppercase($('eContent'));
 bindUppercase($('eUnit'));
-bindUppercase($('rLoc'));
 bindUppercase($('eLoc'));
-bindUppercase($('qUnit'));
-$('qUnit').value = localStorage.getItem('lastUnit') || 'PCS';
 $('detailOverlay').addEventListener('click', e => {
     if (e.target === $('detailOverlay')) closeDetail();
 });
+$('qUnit').value = localStorage.getItem('lastUnit') || 'PCS';
 
-$('datePick').value = todayStr();
-// 從主頁搜尋結果跳轉：/returns?open=記錄ID&date=日期
-const _params = new URLSearchParams(location.search);
-const _openId = _params.get('open');
-const _openDate = _params.get('date');
-if (_openId && _openDate) {
-    history.replaceState(null, '', '/receiving');
-    $('datePick').value = _openDate;
-    $('dayView').style.display = 'none';
-    $('dayPage').style.display = '';
-    updateDayPageChrome();
-    loadRecords().then(() => openDetail(Number(_openId)));
-} else {
-    loadDays();
-}
+loadDays();
 </script>
 <script src="/static/pull-refresh.js"></script>
 </body>

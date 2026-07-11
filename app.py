@@ -255,6 +255,14 @@ def init_db():
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS receive_batches (
+                    id SERIAL PRIMARY KEY,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS receive_records (
                     id SERIAL PRIMARY KEY,
                     content TEXT NOT NULL,
@@ -263,10 +271,22 @@ def init_db():
                     pcs_unit TEXT NOT NULL DEFAULT 'PCS',
                     qty_kg NUMERIC(12,2) NOT NULL DEFAULT 0,
                     location TEXT NOT NULL DEFAULT '',
+                    batch_id INTEGER REFERENCES receive_batches(id)
+                        ON DELETE CASCADE,
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
                 """
             )
+            cur.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'receive_records'"
+            )
+            rc_cols = {r[0] for r in cur.fetchall()}
+            if rc_cols and "batch_id" not in rc_cols:
+                cur.execute(
+                    "ALTER TABLE receive_records ADD COLUMN batch_id INTEGER "
+                    "REFERENCES receive_batches(id) ON DELETE CASCADE"
+                )
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS receive_images (
@@ -1064,7 +1084,108 @@ def receiving_page():
     return FileResponse(BASE_DIR / "static" / "receiving.html", headers=NO_CACHE)
 
 
-# ---------- 收貨記錄（結構同退貨，無 RT） ----------
+# ---------- 收貨記錄（結構同退貨，無 RT；一天分多個時段） ----------
+@app.post("/api/receipts/batches")
+def create_receipt_batch():
+    """新增一個收貨時段（記錄當前時間）"""
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO receive_batches DEFAULT VALUES RETURNING id, created_at"
+        )
+        bid, created = cur.fetchone()
+    conn.close()
+    return {
+        "id": bid,
+        "time": created.strftime("%H:%M"),
+        "date": created.strftime("%Y-%m-%d"),
+    }
+
+
+@app.get("/api/receipts/batches")
+def list_receipt_batches(date: str = ""):
+    """某天的收貨時段列表（含每時段統計）"""
+    if DB_ERROR is not None:
+        return {"db_ok": False, "batches": []}
+    day = date.strip() or time.strftime("%Y-%m-%d")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT b.id, b.created_at,
+                   COUNT(r.id),
+                   COALESCE(SUM(r.qty_ctn), 0), COALESCE(SUM(r.qty_kg), 0)
+            FROM receive_batches b
+            LEFT JOIN receive_records r ON r.batch_id = b.id
+            WHERE b.created_at::date = %s::date
+            GROUP BY b.id, b.created_at
+            ORDER BY b.created_at
+            """,
+            (day,),
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT r.batch_id, r.pcs_unit, SUM(r.qty_pcs)
+            FROM receive_records r
+            JOIN receive_batches b ON b.id = r.batch_id
+            WHERE b.created_at::date = %s::date AND r.qty_pcs > 0
+            GROUP BY r.batch_id, r.pcs_unit ORDER BY r.pcs_unit
+            """,
+            (day,),
+        )
+        unit_map = {}
+        for bid, unit, qty in cur.fetchall():
+            unit_map.setdefault(bid, []).append({"unit": unit, "qty": float(qty)})
+    conn.close()
+    return {
+        "db_ok": True,
+        "batches": [
+            {
+                "id": r[0],
+                "time": r[1].strftime("%H:%M"),
+                "count": r[2],
+                "ctn": float(r[3]),
+                "kg": float(r[4]),
+                "units": unit_map.get(r[0], []),
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.delete("/api/receipts/batches/{batch_id}")
+def delete_receipt_batch(batch_id: int):
+    """刪除時段（連同裡面的記錄與照片）"""
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT i.filename FROM receive_images i
+            JOIN receive_records r ON r.id = i.record_id
+            WHERE r.batch_id = %s
+            """,
+            (batch_id,),
+        )
+        for (rel,) in cur.fetchall():
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError as e:
+                print(f"刪除照片失敗 {rel}: {e}")
+        cur.execute("DELETE FROM receive_batches WHERE id = %s", (batch_id,))
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到時段")
+    return {"ok": True}
+
+
 @app.get("/api/receipts/days")
 def list_receipt_days():
     if DB_ERROR is not None:
@@ -1172,6 +1293,7 @@ def create_receipt(
     kg: str = Form("0"),
     pcs_unit: str = Form("PCS"),
     location: str = Form(""),
+    batch_id: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
     if DB_ERROR is not None:
@@ -1184,6 +1306,10 @@ def create_receipt(
     q_kg = _parse_qty(kg, "KG")
     unit_label = pcs_unit.strip().upper()[:12] or "PCS"
     loc = location.strip().upper()[:50]
+    try:
+        bid = int(batch_id) if batch_id.strip() else None
+    except ValueError:
+        raise HTTPException(400, "時段編號錯誤")
     if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
         raise HTTPException(400, "至少輸入一項數量")
 
@@ -1193,9 +1319,9 @@ def create_receipt(
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO receive_records "
-                "(content, qty_ctn, qty_pcs, pcs_unit, qty_kg, location) "
-                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (content, q_ctn, q_pcs, unit_label, q_kg, loc),
+                "(content, qty_ctn, qty_pcs, pcs_unit, qty_kg, location, batch_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (content, q_ctn, q_pcs, unit_label, q_kg, loc, bid),
             )
             rid, created = cur.fetchone()
             _sync_qr_record(cur, content, loc)  # 同步到主頁歷史記錄
@@ -1234,44 +1360,51 @@ def create_receipt(
 
 
 @app.get("/api/receipts")
-def list_receipts(date: str = ""):
+def list_receipts(date: str = "", batch: int = 0):
     if DB_ERROR is not None:
         return {"db_ok": False, "records": [], "totals": {}}
     day = date.strip() or time.strftime("%Y-%m-%d")
+    # batch > 0 時以時段為準，否則以日期為準
+    if batch > 0:
+        cond = "r.batch_id = %s"
+        cond_param = batch
+    else:
+        cond = "r.created_at::date = %s::date"
+        cond_param = day
     conn = get_conn()
     with conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             SELECT r.id, r.content, r.qty_ctn, r.qty_pcs, r.pcs_unit,
                    r.qty_kg, r.location, r.created_at,
                    COALESCE(
                        (SELECT array_agg(i.filename ORDER BY i.id)
                         FROM receive_images i WHERE i.record_id = r.id),
-                       '{}'
+                       '{{}}'
                    )
             FROM receive_records r
-            WHERE r.created_at::date = %s::date
+            WHERE {cond}
             ORDER BY r.created_at DESC
             """,
-            (day,),
+            (cond_param,),
         )
         rows = cur.fetchall()
         cur.execute(
-            """
-            SELECT COALESCE(SUM(qty_ctn), 0), COALESCE(SUM(qty_kg), 0)
-            FROM receive_records WHERE created_at::date = %s::date
+            f"""
+            SELECT COALESCE(SUM(r.qty_ctn), 0), COALESCE(SUM(r.qty_kg), 0)
+            FROM receive_records r WHERE {cond}
             """,
-            (day,),
+            (cond_param,),
         )
         t_ctn, t_kg = cur.fetchone()
         cur.execute(
-            """
-            SELECT pcs_unit, SUM(qty_pcs)
-            FROM receive_records
-            WHERE created_at::date = %s::date AND qty_pcs > 0
-            GROUP BY pcs_unit ORDER BY pcs_unit
+            f"""
+            SELECT r.pcs_unit, SUM(r.qty_pcs)
+            FROM receive_records r
+            WHERE {cond} AND r.qty_pcs > 0
+            GROUP BY r.pcs_unit ORDER BY r.pcs_unit
             """,
-            (day,),
+            (cond_param,),
         )
         units = [{"unit": u, "qty": float(q)} for u, q in cur.fetchall()]
         cur.execute(

@@ -1,7 +1,7 @@
 // 手機左右滑動換頁（順序照導覽列）
 (function () {
     if (!('ontouchstart' in window)) return;  // 只在觸控裝置啟用
-    const PAGES = ['/', '/favorites', '/returns', '/accounts', '/routes', '/sameday'];
+    const PAGES = ['/', '/favorites', '/returns', '/receiving', '/accounts', '/routes', '/sameday'];
     const cur = PAGES.indexOf(location.pathname || '/');
     if (cur === -1) return;
 

@@ -1310,8 +1310,6 @@ def create_receipt(
         bid = int(batch_id) if batch_id.strip() else None
     except ValueError:
         raise HTTPException(400, "時段編號錯誤")
-    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
-        raise HTTPException(400, "至少輸入一項數量")
 
     conn = get_conn()
     images = []
@@ -1457,8 +1455,6 @@ def update_receipt(record_id: int, body: ReceiptUpdate):
     q_kg = _parse_qty(body.kg, "KG")
     unit_label = body.pcs_unit.strip().upper()[:12] or "PCS"
     loc = body.location.strip().upper()[:50]
-    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
-        raise HTTPException(400, "至少輸入一項數量")
     conn = get_conn()
     conn.autocommit = True
     with conn.cursor() as cur:
@@ -2016,9 +2012,6 @@ def create_return(
     unit_label = pcs_unit.strip().upper()[:12] or "PCS"
     has_rt = rt.strip().lower() in ("true", "1", "on", "yes")
     loc = location.strip().upper()[:50]
-    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
-        raise HTTPException(400, "至少輸入一項數量")
-
     # 用交易包住：任何一張照片失敗就整筆回滾，避免半成品記錄 + 重送變重複
     conn = get_conn()
     images = []
@@ -2260,8 +2253,6 @@ def update_return(record_id: int, body: ReturnUpdate):
     q_kg = _parse_qty(body.kg, "KG")
     unit_label = body.pcs_unit.strip().upper()[:12] or "PCS"
     loc = body.location.strip().upper()[:50]
-    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
-        raise HTTPException(400, "至少輸入一項數量")
     conn = get_conn()
     conn.autocommit = True
     with conn.cursor() as cur:

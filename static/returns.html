@@ -718,9 +718,6 @@ async function addRecord() {
     const kg = $('qKg').value.trim() || '0';
     const unit = $('qUnit').value.trim().toUpperCase() || 'PCS';
     if (!content) { showToast('請輸入退貨內容'); return; }
-    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
-        showToast('至少輸入一項數量'); return;
-    }
     $('addBtn').disabled = true;
     $('addBtn').textContent = '上傳中…';
     try {
@@ -1001,9 +998,6 @@ async function saveEdit() {
     const kg = $('eKg').value.trim() || '0';
     const unit = $('eUnit').value.trim().toUpperCase() || 'PCS';
     if (!content) { showToast('內容不能為空'); return; }
-    if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
-        showToast('至少輸入一項數量'); return;
-    }
     $('saveBtn').disabled = true;
     try {
         const res = await fetch(`/api/returns/${detailId}`, {

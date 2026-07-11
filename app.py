@@ -255,6 +255,41 @@ def init_db():
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS receive_records (
+                    id SERIAL PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    qty_ctn NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    qty_pcs NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    pcs_unit TEXT NOT NULL DEFAULT 'PCS',
+                    qty_kg NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    location TEXT NOT NULL DEFAULT '',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS receive_images (
+                    id SERIAL PRIMARY KEY,
+                    record_id INTEGER NOT NULL
+                        REFERENCES receive_records(id) ON DELETE CASCADE,
+                    filename TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS receive_day_images (
+                    id SERIAL PRIMARY KEY,
+                    day DATE NOT NULL,
+                    filename TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS sameday_images (
                     id SERIAL PRIMARY KEY,
                     day DATE NOT NULL,
@@ -1022,6 +1057,415 @@ def routes_page():
 @app.get("/sameday")
 def sameday_page():
     return FileResponse(BASE_DIR / "static" / "sameday.html", headers=NO_CACHE)
+
+
+@app.get("/receiving")
+def receiving_page():
+    return FileResponse(BASE_DIR / "static" / "receiving.html", headers=NO_CACHE)
+
+
+# ---------- 收貨記錄（結構同退貨，無 RT） ----------
+@app.get("/api/receipts/days")
+def list_receipt_days():
+    if DB_ERROR is not None:
+        return {"db_ok": False, "days": []}
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT created_at::date AS d, COUNT(*),
+                   COALESCE(SUM(qty_ctn), 0), COALESCE(SUM(qty_kg), 0)
+            FROM receive_records
+            GROUP BY d ORDER BY d DESC LIMIT 180
+            """
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT created_at::date AS d, pcs_unit, SUM(qty_pcs)
+            FROM receive_records WHERE qty_pcs > 0
+            GROUP BY d, pcs_unit ORDER BY pcs_unit
+            """
+        )
+        unit_map = {}
+        for d, unit, qty in cur.fetchall():
+            unit_map.setdefault(d, []).append({"unit": unit, "qty": float(qty)})
+    conn.close()
+    return {
+        "db_ok": True,
+        "days": [
+            {
+                "date": r[0].strftime("%Y-%m-%d"),
+                "count": r[1],
+                "ctn": float(r[2]),
+                "kg": float(r[3]),
+                "units": unit_map.get(r[0], []),
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.post("/api/receipts/dayimages")
+def add_receipt_day_images(date: str = Form(""), files: list[UploadFile] = File(...)):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    day = date.strip() or time.strftime("%Y-%m-%d")
+    try:
+        time.strptime(day, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "日期格式錯誤")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"rcd{day.replace('-', '')}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO receive_day_images (day, filename) VALUES (%s, %s)",
+                    (day, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/rdayimg/{img_id}")
+def delete_receipt_day_image(img_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM receive_day_images WHERE id = %s RETURNING filename",
+            (img_id,),
+        )
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "找不到相片")
+    try:
+        (UPLOAD_DIR / row[0]).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除相片檔案失敗 {row[0]}: {e}")
+    return {"ok": True}
+
+
+@app.post("/api/receipts")
+def create_receipt(
+    content: str = Form(...),
+    ctn: str = Form("0"),
+    pcs: str = Form("0"),
+    kg: str = Form("0"),
+    pcs_unit: str = Form("PCS"),
+    location: str = Form(""),
+    files: list[UploadFile] = File(default=[]),
+):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    content = content.strip().upper()
+    if not content:
+        raise HTTPException(400, "內容不能為空")
+    q_ctn = _parse_qty(ctn, "CTN")
+    q_pcs = _parse_qty(pcs, "PCS")
+    q_kg = _parse_qty(kg, "KG")
+    unit_label = pcs_unit.strip().upper()[:12] or "PCS"
+    loc = location.strip().upper()[:50]
+    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
+        raise HTTPException(400, "至少輸入一項數量")
+
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO receive_records "
+                "(content, qty_ctn, qty_pcs, pcs_unit, qty_kg, location) "
+                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (content, q_ctn, q_pcs, unit_label, q_kg, loc),
+            )
+            rid, created = cur.fetchone()
+            _sync_qr_record(cur, content, loc)  # 同步到主頁歷史記錄
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"rc{rid}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO receive_images (record_id, filename) "
+                    "VALUES (%s, %s)",
+                    (rid, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {
+        "id": rid,
+        "content": content,
+        "ctn": q_ctn,
+        "pcs": q_pcs,
+        "pcs_unit": unit_label,
+        "kg": q_kg,
+        "location": loc,
+        "created_at": created.strftime("%Y-%m-%d %H:%M:%S"),
+        "images": images,
+    }
+
+
+@app.get("/api/receipts")
+def list_receipts(date: str = ""):
+    if DB_ERROR is not None:
+        return {"db_ok": False, "records": [], "totals": {}}
+    day = date.strip() or time.strftime("%Y-%m-%d")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT r.id, r.content, r.qty_ctn, r.qty_pcs, r.pcs_unit,
+                   r.qty_kg, r.location, r.created_at,
+                   COALESCE(
+                       (SELECT array_agg(i.filename ORDER BY i.id)
+                        FROM receive_images i WHERE i.record_id = r.id),
+                       '{}'
+                   )
+            FROM receive_records r
+            WHERE r.created_at::date = %s::date
+            ORDER BY r.created_at DESC
+            """,
+            (day,),
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT COALESCE(SUM(qty_ctn), 0), COALESCE(SUM(qty_kg), 0)
+            FROM receive_records WHERE created_at::date = %s::date
+            """,
+            (day,),
+        )
+        t_ctn, t_kg = cur.fetchone()
+        cur.execute(
+            """
+            SELECT pcs_unit, SUM(qty_pcs)
+            FROM receive_records
+            WHERE created_at::date = %s::date AND qty_pcs > 0
+            GROUP BY pcs_unit ORDER BY pcs_unit
+            """,
+            (day,),
+        )
+        units = [{"unit": u, "qty": float(q)} for u, q in cur.fetchall()]
+        cur.execute(
+            "SELECT id, filename FROM receive_day_images "
+            "WHERE day = %s::date ORDER BY id",
+            (day,),
+        )
+        day_images = [{"id": r[0], "filename": r[1]} for r in cur.fetchall()]
+    conn.close()
+    return {
+        "db_ok": True,
+        "date": day,
+        "totals": {"CTN": float(t_ctn), "KG": float(t_kg), "units": units},
+        "day_images": day_images,
+        "records": [
+            {
+                "id": r[0],
+                "content": r[1],
+                "ctn": float(r[2]),
+                "pcs": float(r[3]),
+                "pcs_unit": r[4],
+                "kg": float(r[5]),
+                "location": r[6],
+                "created_at": r[7].strftime("%Y-%m-%d %H:%M:%S"),
+                "images": list(r[8]),
+            }
+            for r in rows
+        ],
+    }
+
+
+class ReceiptUpdate(BaseModel):
+    content: str
+    ctn: str = "0"
+    pcs: str = "0"
+    kg: str = "0"
+    pcs_unit: str = "PCS"
+    location: str = ""
+
+
+@app.put("/api/receipts/{record_id}")
+def update_receipt(record_id: int, body: ReceiptUpdate):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    content = body.content.strip().upper()
+    if not content:
+        raise HTTPException(400, "內容不能為空")
+    q_ctn = _parse_qty(body.ctn, "CTN")
+    q_pcs = _parse_qty(body.pcs, "PCS")
+    q_kg = _parse_qty(body.kg, "KG")
+    unit_label = body.pcs_unit.strip().upper()[:12] or "PCS"
+    loc = body.location.strip().upper()[:50]
+    if q_ctn == 0 and q_pcs == 0 and q_kg == 0:
+        raise HTTPException(400, "至少輸入一項數量")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT content FROM receive_records WHERE id = %s", (record_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            raise HTTPException(404, "找不到記錄")
+        old_content = row[0]
+        cur.execute(
+            "UPDATE receive_records SET content = %s, qty_ctn = %s, "
+            "qty_pcs = %s, pcs_unit = %s, qty_kg = %s, location = %s "
+            "WHERE id = %s",
+            (content, q_ctn, q_pcs, unit_label, q_kg, loc, record_id),
+        )
+        updated = cur.rowcount
+        if updated:
+            if old_content != content:
+                # 改錯字：舊內容的主頁同步記錄若沒被用過就清掉
+                cur.execute(
+                    """
+                    DELETE FROM qr_records q
+                    WHERE q.content = %s
+                      AND q.times <= 1
+                      AND NOT q.is_favorite
+                      AND q.qr_type = 'goods'
+                      AND q.stack_base = 0 AND q.stack_height = 0
+                      AND q.pieces_per_box = 0
+                      AND NOT EXISTS (
+                          SELECT 1 FROM qr_images i WHERE i.record_id = q.id
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM receive_records r
+                          WHERE r.content = %s AND r.id <> %s
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM return_records r2 WHERE r2.content = %s
+                      )
+                    """,
+                    (old_content, old_content, record_id, old_content),
+                )
+            _sync_qr_record(cur, content, loc)
+    conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/receipts/{record_id}")
+def delete_receipt(record_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT filename FROM receive_images WHERE record_id = %s", (record_id,)
+        )
+        for (rel,) in cur.fetchall():
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError as e:
+                print(f"刪除照片失敗 {rel}: {e}")
+        cur.execute("DELETE FROM receive_records WHERE id = %s", (record_id,))
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到記錄")
+    return {"ok": True}
+
+
+@app.post("/api/receipts/{record_id}/images")
+def add_receipt_images(record_id: int, files: list[UploadFile] = File(...)):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    images = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM receive_records WHERE id = %s", (record_id,))
+            if not cur.fetchone():
+                raise HTTPException(404, "找不到記錄")
+            for i, f in enumerate(files):
+                if not f.filename:
+                    continue
+                rel = _save_upload(f"rc{record_id}", i, f)
+                images.append(rel)
+                cur.execute(
+                    "INSERT INTO receive_images (record_id, filename) "
+                    "VALUES (%s, %s)",
+                    (record_id, rel),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        for rel in images:
+            try:
+                (UPLOAD_DIR / rel).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/recimg")
+def delete_receipt_image(record_id: int, filename: str):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM receive_images WHERE record_id = %s AND filename = %s",
+            (record_id, filename),
+        )
+        deleted = cur.rowcount
+    conn.close()
+    if not deleted:
+        raise HTTPException(404, "找不到照片")
+    try:
+        (UPLOAD_DIR / filename).unlink(missing_ok=True)
+    except OSError as e:
+        print(f"刪除照片檔案失敗 {filename}: {e}")
+    return {"ok": True}
+
+
+@app.get("/api/receipts/{record_id}/qr")
+def receipt_record_qr(record_id: int):
+    if DB_ERROR is not None:
+        raise HTTPException(503, "資料庫未連線")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT content FROM receive_records WHERE id = %s", (record_id,))
+        row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "找不到記錄")
+    return Response(make_qr_png(row[0]), media_type="image/png")
 
 
 # ---------- Same Day：每日早上出貨相片 ----------

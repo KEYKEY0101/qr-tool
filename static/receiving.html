@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>退貨記錄</title>
+<title>收貨記錄</title>
 <style>
 :root {
     --bg: #f4f6f9;
@@ -435,8 +435,8 @@ nav a:hover { color: var(--primary); }
     <nav>
         <a href="/">📦 二維碼生成器</a>
         <a href="/favorites">⭐ 常用二維碼</a>
-        <a href="/returns" class="active">↩️ 退貨記錄</a>
-        <a href="/receiving">📥 收貨記錄</a>
+        <a href="/returns">↩️ 退貨記錄</a>
+        <a href="/receiving" class="active">📥 收貨記錄</a>
         <a href="/accounts">🔑 帳號密碼</a>
         <a href="/routes">🚚 車線</a>
         <a href="/sameday">📤 Same Day</a>
@@ -450,11 +450,11 @@ nav a:hover { color: var(--primary); }
 <div id="dayView">
     <div class="card">
         <div class="day-head">
-            <h2>📅 退貨日誌</h2>
-            <button class="btn-today" onclick="showDay(todayStr())">➕ 今天的退貨</button>
+            <h2>📅 收貨日誌</h2>
+            <button class="btn-today" onclick="showDay(todayStr())">➕ 今天的收貨</button>
         </div>
         <div id="dayList"></div>
-        <div id="dayEmpty" style="display:none">尚無退貨記錄，點右上「➕ 今天的退貨」開始</div>
+        <div id="dayEmpty" style="display:none">尚無收貨記錄，點右上「➕ 今天的收貨」開始</div>
     </div>
 </div>
 
@@ -466,8 +466,8 @@ nav a:hover { color: var(--primary); }
     </div>
 
     <div class="card" id="addCard">
-        <h2>➕ 新增退貨</h2>
-        <input id="rContent" type="text" placeholder="退貨內容（自動轉大寫）" autocomplete="off">
+        <h2>➕ 新增收貨</h2>
+        <input id="rContent" type="text" placeholder="收貨內容（自動轉大寫）" autocomplete="off">
         <div id="locHint" style="display:none"></div>
         <div class="qty-grid">
             <div class="qty-box"><input id="qCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
@@ -475,17 +475,14 @@ nav a:hover { color: var(--primary); }
             <div class="qty-box"><input id="qKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
         </div>
         <div class="extra-grid">
-            <label class="rt-check" title="有 RT 就打勾">
-                <input type="checkbox" id="rRt"><span>RT</span>
-            </label>
-            <input id="rLoc" type="text" placeholder="回倉位置（選填，自動轉大寫）" autocomplete="off">
+            <input id="rLoc" type="text" placeholder="存放位置（選填，自動轉大寫）" autocomplete="off">
         </div>
         <div class="photo-row">
             <button class="photo-btn" onclick="$('rFiles').click()">📷 加入照片</button>
             <input id="rFiles" type="file" accept="image/*" multiple style="display:none">
             <div id="previews"></div>
         </div>
-        <button class="btn" id="addBtn" onclick="addRecord()">新增退貨記錄</button>
+        <button class="btn" id="addBtn" onclick="addRecord()">新增收貨記錄</button>
     </div>
 
     <div class="card">
@@ -510,7 +507,7 @@ nav a:hover { color: var(--primary); }
     <div class="card">
         <h2>📄 當日記錄（點擊顯示二維碼／修改資料）</h2>
         <div id="recordList"></div>
-        <div id="emptyMsg">這一天沒有退貨記錄</div>
+        <div id="emptyMsg">這一天沒有收貨記錄</div>
     </div>
 
     <div class="card" id="waCard" style="display:none">
@@ -538,17 +535,14 @@ nav a:hover { color: var(--primary); }
         </div>
         <div class="detail-sec">
             <h3>✏️ 修改資料（打錯可更正）</h3>
-            <input id="eContent" type="text" class="e-content" autocomplete="off" placeholder="退貨內容">
+            <input id="eContent" type="text" class="e-content" autocomplete="off" placeholder="收貨內容">
             <div class="qty-grid" style="margin-top:10px">
                 <div class="qty-box"><input id="eCtn" type="number" min="0" step="any" placeholder="0"><span class="u">CTN</span></div>
                 <div class="qty-box"><input id="ePcs" type="number" min="0" step="any" placeholder="0"><input id="eUnit" class="u-edit" maxlength="12" title="點擊可修改單位"></div>
                 <div class="qty-box"><input id="eKg" type="number" min="0" step="any" placeholder="0"><span class="u">KG</span></div>
             </div>
             <div class="extra-grid">
-                <label class="rt-check" title="有 RT 就打勾">
-                    <input type="checkbox" id="eRt"><span>RT</span>
-                </label>
-                <input id="eLoc" type="text" placeholder="回倉位置（選填）" autocomplete="off">
+                <input id="eLoc" type="text" placeholder="存放位置（選填）" autocomplete="off">
                 <button class="mini-btn locqr" id="dLocQr" style="display:none" title="顯示位置二維碼">📱</button>
             </div>
             <button class="btn" id="saveBtn" onclick="saveEdit()">💾 儲存修改</button>
@@ -602,7 +596,7 @@ function weekdayOf(dateStr) {
 // ---------- 第一層：日期總覽 ----------
 async function loadDays() {
     try {
-        const res = await fetch('/api/returns/days');
+        const res = await fetch('/api/receipts/days');
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.statusText);
         const list = $('dayList');
@@ -613,7 +607,7 @@ async function loadDays() {
             return;
         }
         $('dayEmpty').style.display = data.days.length ? 'none' : 'block';
-        $('dayEmpty').textContent = '尚無退貨記錄，點右上「➕ 今天的退貨」開始';
+        $('dayEmpty').textContent = '尚無收貨記錄，點右上「➕ 今天的收貨」開始';
         for (const d of data.days) {
             const row = document.createElement('div');
             row.className = 'day-row';
@@ -653,7 +647,7 @@ function backToDays() {
 function updateDayPageChrome() {
     const d = $('datePick').value;
     $('dayPageTitle').textContent = `${d}（${weekdayOf(d)}）`;
-    // 只有「今天」的頁面才能新增退貨
+    // 只有「今天」的頁面才能新增收貨
     $('addCard').style.display = d === todayStr() ? '' : 'none';
 }
 
@@ -691,7 +685,7 @@ async function lookupLocation() {
         if (seq !== hintSeq) return;  // 舊請求不覆蓋新結果
         if (data.found && data.location) {
             hintLoc = data.location;
-            $('locHint').textContent = `📍 主頁記錄位置：${data.location}（點一下填入回倉位置）`;
+            $('locHint').textContent = `📍 主頁記錄位置：${data.location}（點一下填入存放位置）`;
             $('locHint').style.display = 'block';
         } else {
             $('locHint').style.display = 'none';
@@ -706,7 +700,7 @@ $('rContent').addEventListener('input', () => {
 $('locHint').addEventListener('click', () => {
     if (hintLoc) {
         $('rLoc').value = hintLoc;
-        showToast('已填入回倉位置：' + hintLoc);
+        showToast('已填入存放位置：' + hintLoc);
     }
 });
 
@@ -717,7 +711,7 @@ async function addRecord() {
     const pcs = $('qPcs').value.trim() || '0';
     const kg = $('qKg').value.trim() || '0';
     const unit = $('qUnit').value.trim().toUpperCase() || 'PCS';
-    if (!content) { showToast('請輸入退貨內容'); return; }
+    if (!content) { showToast('請輸入收貨內容'); return; }
     if (Number(ctn) <= 0 && Number(pcs) <= 0 && Number(kg) <= 0) {
         showToast('至少輸入一項數量'); return;
     }
@@ -730,18 +724,16 @@ async function addRecord() {
         fd.append('pcs', pcs);
         fd.append('kg', kg);
         fd.append('pcs_unit', unit);
-        fd.append('rt', $('rRt').checked);
         fd.append('location', $('rLoc').value.trim().toUpperCase());
         localStorage.setItem('lastUnit', unit);
         const compressed = await compressPhotos(pendingFiles);
         compressed.forEach(f => fd.append('files', f));
-        const res = await fetch('/api/returns', {method: 'POST', body: fd});
+        const res = await fetch('/api/receipts', {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        showToast('已新增退貨記錄');
+        showToast('已新增收貨記錄');
         $('rContent').value = '';
         $('qCtn').value = ''; $('qPcs').value = ''; $('qKg').value = '';
         $('qUnit').value = unit;  // 保留上次使用的單位
-        $('rRt').checked = false;
         $('rLoc').value = '';
         $('locHint').style.display = 'none';
         pendingFiles = [];
@@ -751,7 +743,7 @@ async function addRecord() {
         showToast('新增失敗：' + e.message);
     } finally {
         $('addBtn').disabled = false;
-        $('addBtn').textContent = '新增退貨記錄';
+        $('addBtn').textContent = '新增收貨記錄';
     }
 }
 
@@ -760,14 +752,14 @@ async function loadRecords() {
     if (!$('datePick').value) $('datePick').value = todayStr();
     updateDayPageChrome();
     try {
-        const res = await fetch('/api/returns?date=' + $('datePick').value);
+        const res = await fetch('/api/receipts?date=' + $('datePick').value);
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.statusText);
         if (data.db_ok === false) {
             currentRecords = [];
             $('tCTN').textContent = $('tMID').textContent = $('tKG').textContent = '－';
             renderList();
-            $('emptyMsg').textContent = '⚠ 資料庫未連線，無法載入退貨記錄';
+            $('emptyMsg').textContent = '⚠ 資料庫未連線，無法載入收貨記錄';
             return;
         }
         currentRecords = data.records;
@@ -781,7 +773,7 @@ async function loadRecords() {
             : '0';
         $('tMID').style.fontSize = units.length > 1 ? '1.05rem' : '';
         $('tKG').textContent = fmtNum(data.totals.KG || 0);
-        $('emptyMsg').textContent = '這一天沒有退貨記錄';
+        $('emptyMsg').textContent = '這一天沒有收貨記錄';
         renderList();
         if (detailId !== null) renderDetail();  // 詳細頁開著時同步更新
     } catch (e) {
@@ -828,7 +820,7 @@ $('dayFiles').addEventListener('change', async e => {
     for (const f of files) fd.append('files', f);
     showToast(`上傳中…`);
     try {
-        const res = await uploadWithTimeout('/api/returns/dayimages', {method: 'POST', body: fd});
+        const res = await uploadWithTimeout('/api/receipts/dayimages', {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         clientLog('當日相片: 上傳成功');
         showToast('已上傳當日貨物相片');
@@ -842,7 +834,7 @@ $('dayFiles').addEventListener('change', async e => {
 async function delDayPhoto(im) {
     if (!confirm('確定刪除這張相片？')) return;
     try {
-        const res = await fetch(`/api/dayimages/${im.id}`, {method: 'DELETE'});
+        const res = await fetch(`/api/rdayimg/${im.id}`, {method: 'DELETE'});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已刪除相片');
         loadRecords();
@@ -860,7 +852,6 @@ function qtyBadges(r) {
 }
 function extraBadges(r) {
     let html = '';
-    if (r.has_rt) html += '<span class="rec-qty rt-badge">RT</span>';
     if (r.location) html += `<span class="rec-qty">📍${esc(r.location)}</span>`;
     return html;
 }
@@ -918,14 +909,13 @@ function renderDetail() {
     const r = currentRecords.find(x => x.id === detailId);
     if (!r) { closeDetail(); return; }
     $('dContent').textContent = r.content;
-    $('dQrImg').src = `/api/returns/${r.id}/qr?v=` + encodeURIComponent(r.content);
+    $('dQrImg').src = `/api/receipts/${r.id}/qr?v=` + encodeURIComponent(r.content);
     $('dQrImg').onclick = () => showImage($('dQrImg').src, r.content);
     $('eContent').value = r.content;
     $('eCtn').value = r.ctn > 0 ? fmtNum(r.ctn) : '';
     $('ePcs').value = r.pcs > 0 ? fmtNum(r.pcs) : '';
     $('eUnit').value = r.pcs_unit || 'PCS';
     $('eKg').value = r.kg > 0 ? fmtNum(r.kg) : '';
-    $('eRt').checked = !!r.has_rt;
     $('eLoc').value = r.location || '';
     const dq = $('dLocQr');
     dq.style.display = r.location ? '' : 'none';
@@ -967,7 +957,7 @@ $('dPhotoFiles').addEventListener('change', async e => {
     for (const f of files) fd.append('files', f);
     showToast(`上傳中…`);
     try {
-        const res = await uploadWithTimeout(`/api/returns/${id}/images`, {method: 'POST', body: fd});
+        const res = await uploadWithTimeout(`/api/receipts/${id}/images`, {method: 'POST', body: fd});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         clientLog(`記錄照片(id=${id}): 上傳成功`);
         showToast('已加入照片');
@@ -982,7 +972,7 @@ async function delRetPhoto(r, rel) {
     if (!confirm('確定刪除這張照片？')) return;
     try {
         const res = await fetch(
-            `/api/retimg?record_id=${r.id}&filename=${encodeURIComponent(rel)}`,
+            `/api/recimg?record_id=${r.id}&filename=${encodeURIComponent(rel)}`,
             {method: 'DELETE'}
         );
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
@@ -1006,12 +996,11 @@ async function saveEdit() {
     }
     $('saveBtn').disabled = true;
     try {
-        const res = await fetch(`/api/returns/${detailId}`, {
+        const res = await fetch(`/api/receipts/${detailId}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 content, ctn, pcs, kg, pcs_unit: unit,
-                rt: $('eRt').checked,
                 location: $('eLoc').value.trim().toUpperCase()
             })
         });
@@ -1033,9 +1022,9 @@ function showImage(src, cap) {
 }
 
 async function delRecord(r) {
-    if (!confirm(`確定刪除「${r.content}」這筆退貨記錄？照片和二維碼也會一併刪除。`)) return;
+    if (!confirm(`確定刪除「${r.content}」這筆收貨記錄？照片和二維碼也會一併刪除。`)) return;
     try {
-        const res = await fetch(`/api/returns/${r.id}`, {method: 'DELETE'});
+        const res = await fetch(`/api/receipts/${r.id}`, {method: 'DELETE'});
         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
         showToast('已刪除');
         if (detailId === r.id) closeDetail();
@@ -1051,9 +1040,8 @@ function recordLine(r) {
     if (r.ctn > 0) qty.push(fmtNum(r.ctn) + 'CTN');
     if (r.pcs > 0) qty.push(fmtNum(r.pcs) + (r.pcs_unit || 'PCS'));
     if (r.kg > 0) qty.push(fmtNum(r.kg) + 'KG');
-    let tag = r.has_rt ? '有RT' : '沒有RT';
-    if (r.location) tag += '回位' + r.location;
-    return `${r.content} ${qty.join(' ')}(${tag})`;
+    const tag = r.location ? `(位置${r.location})` : '';
+    return `${r.content} ${qty.join(' ')}${tag}`;
 }
 
 function buildWaText() {
@@ -1124,7 +1112,7 @@ const _params = new URLSearchParams(location.search);
 const _openId = _params.get('open');
 const _openDate = _params.get('date');
 if (_openId && _openDate) {
-    history.replaceState(null, '', '/returns');
+    history.replaceState(null, '', '/receiving');
     $('datePick').value = _openDate;
     $('dayView').style.display = 'none';
     $('dayPage').style.display = '';

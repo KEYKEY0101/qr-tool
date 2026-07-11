@@ -318,6 +318,23 @@ nav a:hover { color: var(--primary); }
     width: 220px;
     max-width: 100%;
 }
+.filter-chips { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 6px 14px;
+    font-size: .88rem;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary); }
+.chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: bold;
+}
 table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 th, td { padding: 9px 8px; text-align: left; border-bottom: 1px solid var(--border); }
 th { color: var(--text-dim); font-weight: 600; font-size: .82rem; }
@@ -528,6 +545,11 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
         <div class="history-head">
             <h2>📄 歷史記錄</h2>
             <input id="searchInput" type="text" placeholder="搜尋…">
+        </div>
+        <div class="filter-chips">
+            <button class="chip active" data-photo="">全部</button>
+            <button class="chip" data-photo="with">📷 有相片</button>
+            <button class="chip" data-photo="without">⬜ 沒相片</button>
         </div>
         <table>
             <thead>
@@ -887,19 +909,34 @@ function fallbackCopy(text) {
 
 // ---------- 記錄 ----------
 let loadSeq = 0;
+let photoFilter = '';  // '' 全部 | 'with' 有相片 | 'without' 沒相片
 async function loadRecords() {
     const q = $('searchInput').value.trim();
     const seq = ++loadSeq;  // 防止慢的舊請求蓋掉新結果
     try {
-        const res = await fetch('/api/records?q=' + encodeURIComponent(q));
+        const res = await fetch(
+            '/api/records?q=' + encodeURIComponent(q) + '&photo=' + photoFilter
+        );
         const data = await res.json();
         if (seq !== loadSeq) return;
         if (!res.ok || !Array.isArray(data.records)) return;
         currentRecords = data.records;
+        $('emptyMsg').textContent = photoFilter
+            ? (photoFilter === 'with' ? '沒有帶相片的記錄' : '所有記錄都有相片了')
+            : '尚無記錄';
         renderRecords();
         renderReturnsMatches(data.returns || []);
     } catch (e) { /* 資料庫未連線時略過 */ }
 }
+
+document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        photoFilter = chip.dataset.photo;
+        loadRecords();
+    });
+});
 
 function renderReturnsMatches(matches) {
     const card = $('returnsCard');

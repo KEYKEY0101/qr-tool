@@ -696,7 +696,7 @@ def _qr_row_dict(r):
 
 
 @app.get("/api/records")
-def records(q: str = "", fav: bool = False):
+def records(q: str = "", fav: bool = False, photo: str = ""):
     if DB_ERROR is not None:
         return {"db_ok": False, "records": [], "returns": []}
     conn = get_conn()
@@ -710,6 +710,14 @@ def records(q: str = "", fav: bool = False):
             params += [_like_pattern(q), _fuzzy_pattern(q)]
         if fav:
             where.append("is_favorite")
+        if photo == "with":
+            where.append(
+                "EXISTS (SELECT 1 FROM qr_images i WHERE i.record_id = qr_records.id)"
+            )
+        elif photo == "without":
+            where.append(
+                "NOT EXISTS (SELECT 1 FROM qr_images i WHERE i.record_id = qr_records.id)"
+            )
         sql = QR_SELECT
         if where:
             sql += " WHERE " + " AND ".join(where)

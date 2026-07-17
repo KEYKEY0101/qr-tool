@@ -753,9 +753,10 @@ def _qr_row_dict(r):
 @app.get("/api/records")
 def records(q: str = "", fav: bool = False, photo: str = ""):
     if DB_ERROR is not None:
-        return {"db_ok": False, "records": [], "returns": []}
+        return {"db_ok": False, "records": [], "returns": [], "receipts": []}
     conn = get_conn()
     returns_matches = []
+    receipts_matches = []
     with conn.cursor() as cur:
         where = []
         params = []
@@ -807,11 +808,36 @@ def records(q: str = "", fav: bool = False, photo: str = ""):
                 }
                 for r in cur.fetchall()
             ]
+            # 同時搜尋收貨記錄
+            cur.execute(
+                """
+                SELECT id, content, qty_ctn, qty_pcs, pcs_unit, qty_kg, created_at, batch_id
+                FROM receive_records
+                WHERE content ILIKE %s OR content ILIKE %s
+                ORDER BY (content ILIKE %s) DESC, created_at DESC LIMIT 100
+                """,
+                (_like_pattern(q), _fuzzy_pattern(q), _like_pattern(q)),
+            )
+            receipts_matches = [
+                {
+                    "id": r[0],
+                    "content": r[1],
+                    "ctn": float(r[2]),
+                    "pcs": float(r[3]),
+                    "pcs_unit": r[4],
+                    "kg": float(r[5]),
+                    "date": r[6].strftime("%Y-%m-%d"),
+                    "created_at": r[6].strftime("%Y-%m-%d %H:%M:%S"),
+                    "batch_id": r[7],
+                }
+                for r in cur.fetchall()
+            ]
     conn.close()
     return {
         "db_ok": True,
         "records": [_qr_row_dict(r) for r in rows],
         "returns": returns_matches,
+        "receipts": receipts_matches,
     }
 
 

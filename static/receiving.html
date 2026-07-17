@@ -1121,7 +1121,31 @@ $('detailOverlay').addEventListener('click', e => {
 });
 $('qUnit').value = localStorage.getItem('lastUnit') || 'PCS';
 
-loadDays();
+// 主頁搜尋深連結：/receiving?open=記錄id&date=日期&batch=時段id
+const _params = new URLSearchParams(location.search);
+const _openId = parseInt(_params.get('open') || '', 10);
+const _openDate = _params.get('date') || '';
+const _openBatch = parseInt(_params.get('batch') || '', 10);
+if (_openId && _openDate) {
+    history.replaceState(null, '', '/receiving');
+    (async () => {
+        showDay(_openDate);
+        if (_openBatch) {
+            try {
+                const res = await fetch('/api/receipts/batches?date=' + _openDate);
+                const data = await res.json();
+                const b = (data.batches || []).find(x => x.id === _openBatch);
+                if (b) {
+                    openBatch({id: b.id, time: b.time});
+                    await loadBatchRecords();
+                    if (currentRecords.some(r => r.id === _openId)) openDetail(_openId);
+                }
+            } catch (e) { /* 找不到就停在單日頁 */ }
+        }
+    })();
+} else {
+    loadDays();
+}
 </script>
 <script src="/static/pull-refresh.js"></script>
 </body>

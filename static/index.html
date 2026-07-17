@@ -570,6 +570,11 @@ td.content-cell { font-weight: 600; letter-spacing: 1px; word-break: break-all; 
         <h2 style="font-size:1.05rem;margin-bottom:10px">↩️ 退貨記錄中找到（點擊查看）</h2>
         <div id="returnsList"></div>
     </div>
+
+    <div class="card" id="receiptsCard" style="display:none">
+        <h2 style="font-size:1.05rem;margin-bottom:10px">📥 收貨記錄中找到（點擊查看）</h2>
+        <div id="receiptsList"></div>
+    </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="this.classList.remove('show')">
@@ -927,6 +932,7 @@ async function loadRecords() {
             : '尚無記錄';
         renderRecords();
         renderReturnsMatches(data.returns || []);
+        renderReceiptsMatches(data.receipts || []);
     } catch (e) { /* 資料庫未連線時略過 */ }
 }
 
@@ -959,6 +965,32 @@ function renderReturnsMatches(matches) {
         row.querySelector('.ret-content').textContent = r.content;
         row.onclick = () => {
             location.href = `/returns?open=${r.id}&date=${r.date}`;
+        };
+        list.appendChild(row);
+    }
+}
+
+function renderReceiptsMatches(matches) {
+    const card = $('receiptsCard');
+    const list = $('receiptsList');
+    list.innerHTML = '';
+    card.style.display = matches.length ? '' : 'none';
+    for (const r of matches) {
+        const row = document.createElement('div');
+        row.className = 'ret-row';
+        const badges = [];
+        if (r.ctn > 0) badges.push(fmtNum(r.ctn) + ' CTN');
+        if (r.pcs > 0) badges.push(fmtNum(r.pcs) + ' ' + esc(r.pcs_unit || 'PCS'));
+        if (r.kg > 0) badges.push(fmtNum(r.kg) + ' KG');
+        row.innerHTML = `
+            <span class="ret-date">${r.date}</span>
+            <span class="ret-content"></span>
+            ${badges.map(t => `<span class="ret-qty">${t}</span>`).join('')}
+            <span style="color:var(--text-dim)">›</span>`;
+        row.querySelector('.ret-content').textContent = r.content;
+        row.onclick = () => {
+            location.href = `/receiving?open=${r.id}&date=${r.date}` +
+                (r.batch_id ? `&batch=${r.batch_id}` : '');
         };
         list.appendChild(row);
     }
